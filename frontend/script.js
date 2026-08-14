@@ -14,10 +14,13 @@ async function checkAPI() {
         );
 
         if (!response.ok) {
-            throw new Error("API unavailable");
+
+            throw new Error(
+                "API unavailable"
+            );
         }
 
-        const data = await response.json();
+        await response.json();
 
         document.getElementById(
             "statusDot"
@@ -25,7 +28,8 @@ async function checkAPI() {
 
         document.getElementById(
             "statusText"
-        ).textContent = "API Connected";
+        ).textContent =
+            "API Connected";
 
     } catch (error) {
 
@@ -35,7 +39,8 @@ async function checkAPI() {
 
         document.getElementById(
             "statusText"
-        ).textContent = "API Offline";
+        ).textContent =
+            "API Offline";
     }
 }
 
@@ -53,6 +58,7 @@ async function loadSummary() {
         );
 
         if (!response.ok) {
+
             throw new Error(
                 "Summary unavailable"
             );
@@ -87,7 +93,7 @@ async function loadSummary() {
         document.getElementById(
             "diagnosisCodes"
         ).textContent =
-            data.distinct_diagnosis_codes;
+            data.distinct_diagnosis_codes.toLocaleString();
 
 
         // -----------------------------------------------
@@ -130,22 +136,25 @@ async function loadSummary() {
             data.total_rows;
 
 
-        document.getElementById(
-            "barA"
-        ).style.width =
-            `${(sourceA / total) * 100}%`;
+        if (total > 0) {
+
+            document.getElementById(
+                "barA"
+            ).style.width =
+                `${(sourceA / total) * 100}%`;
 
 
-        document.getElementById(
-            "barB"
-        ).style.width =
-            `${(sourceB / total) * 100}%`;
+            document.getElementById(
+                "barB"
+            ).style.width =
+                `${(sourceB / total) * 100}%`;
 
 
-        document.getElementById(
-            "barC"
-        ).style.width =
-            `${(sourceC / total) * 100}%`;
+            document.getElementById(
+                "barC"
+            ).style.width =
+                `${(sourceC / total) * 100}%`;
+        }
 
 
     } catch (error) {
@@ -178,12 +187,13 @@ async function runPipeline() {
 
     try {
 
-        const response = await fetch(
-            `${API_BASE}/run`,
-            {
-                method: "POST"
-            }
-        );
+        const response =
+            await fetch(
+                `${API_BASE}/run`,
+                {
+                    method: "POST"
+                }
+            );
 
 
         const data =
@@ -280,7 +290,9 @@ async function runPipeline() {
             html;
 
 
-        // Refresh summary
+        // -----------------------------------------------
+        // REFRESH SUMMARY
+        // -----------------------------------------------
 
         await loadSummary();
 
@@ -299,6 +311,19 @@ async function runPipeline() {
         button.textContent =
             "Run Pipeline";
     }
+}
+
+
+// =========================================================
+// DOWNLOAD FINAL CSV
+// =========================================================
+
+function downloadCSV() {
+
+    window.open(
+        `${API_BASE}/download`,
+        "_blank"
+    );
 }
 
 

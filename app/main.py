@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
 from pathlib import Path
-import pandas as pd
-import uuid
 from datetime import datetime
+import uuid
+import pandas as pd
 
 from app.pipeline import (
     process_source_a,
@@ -30,6 +32,11 @@ app = FastAPI(
     ),
     version="1.0.0"
 )
+
+
+# =========================================================
+# CORS
+# =========================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,6 +73,7 @@ runs = {}
 
 @app.get("/")
 def home():
+
     return {
         "application": "Multi-Source Data Harmonization Pipeline",
         "status": "running",
@@ -81,13 +89,20 @@ def home():
 def get_summary():
 
     if not FINAL_OUTPUT.exists():
+
         raise HTTPException(
             status_code=404,
-            detail="Final harmonized dataset has not been generated yet."
+            detail=(
+                "Final harmonized dataset "
+                "has not been generated yet."
+            )
         )
 
     try:
-        df = pd.read_csv(FINAL_OUTPUT)
+
+        df = pd.read_csv(
+            FINAL_OUTPUT
+        )
 
         source_counts = (
             df.groupby("SRC")
@@ -96,23 +111,31 @@ def get_summary():
         )
 
         return {
-            "total_rows": int(len(df)),
 
-            "distinct_claims": int(
-                df["CLAIM_ID"].nunique()
-            ),
+            "total_rows":
+                int(len(df)),
 
-            "distinct_patients": int(
-                df["PATIENT_ID"].nunique()
-            ),
+            "distinct_claims":
+                int(
+                    df["CLAIM_ID"].nunique()
+                ),
 
-            "distinct_diagnosis_codes": int(
-                df["DIAGNOSIS_CODE"].nunique()
-            ),
+            "distinct_patients":
+                int(
+                    df["PATIENT_ID"].nunique()
+                ),
+
+            "distinct_diagnosis_codes":
+                int(
+                    df["DIAGNOSIS_CODE"].nunique()
+                ),
 
             "source_counts": {
+
                 str(key): int(value)
-                for key, value in source_counts.items()
+
+                for key, value
+                in source_counts.items()
             }
         }
 
@@ -125,13 +148,39 @@ def get_summary():
 
 
 # =========================================================
+# DOWNLOAD FINAL CSV
+# =========================================================
+
+@app.get("/download")
+def download_final_csv():
+
+    if not FINAL_OUTPUT.exists():
+
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Final harmonized dataset "
+                "not found."
+            )
+        )
+
+    return FileResponse(
+        path=FINAL_OUTPUT,
+        media_type="text/csv",
+        filename="final_harmonized.csv"
+    )
+
+
+# =========================================================
 # RUN PIPELINE
 # =========================================================
 
 @app.post("/run")
 def run_pipeline():
 
-    run_id = str(uuid.uuid4())
+    run_id = str(
+        uuid.uuid4()
+    )
 
     started_at = datetime.now()
 
@@ -140,7 +189,7 @@ def run_pipeline():
     try:
 
         # =================================================
-        # STAGE 1 — INGESTION / STANDARDIZATION
+        # STAGE 1 — INGESTION
         # =================================================
 
         stages.append({
@@ -254,16 +303,18 @@ def run_pipeline():
 
 
         # =================================================
-        # SAVE RUN INFORMATION
+        # STORE RUN
         # =================================================
 
         completed_at = datetime.now()
 
         runs[run_id] = {
 
-            "run_id": run_id,
+            "run_id":
+                run_id,
 
-            "status": "completed",
+            "status":
+                "completed",
 
             "started_at":
                 started_at.isoformat(),
@@ -281,7 +332,6 @@ def run_pipeline():
                 stages
         }
 
-
         return runs[run_id]
 
 
@@ -289,9 +339,11 @@ def run_pipeline():
 
         runs[run_id] = {
 
-            "run_id": run_id,
+            "run_id":
+                run_id,
 
-            "status": "failed",
+            "status":
+                "failed",
 
             "started_at":
                 started_at.isoformat(),
@@ -307,9 +359,11 @@ def run_pipeline():
 
         runs[run_id] = {
 
-            "run_id": run_id,
+            "run_id":
+                run_id,
 
-            "status": "failed",
+            "status":
+                "failed",
 
             "started_at":
                 started_at.isoformat(),
@@ -332,7 +386,9 @@ def run_pipeline():
 # =========================================================
 
 @app.get("/run/{run_id}/stages")
-def get_run_stages(run_id: str):
+def get_run_stages(
+    run_id: str
+):
 
     if run_id not in runs:
 
@@ -359,7 +415,9 @@ def get_run_stages(run_id: str):
 # =========================================================
 
 @app.get("/run/{run_id}/validate")
-def get_validation(run_id: str):
+def get_validation(
+    run_id: str
+):
 
     if run_id not in runs:
 
@@ -398,9 +456,9 @@ def get_validation(run_id: str):
         )
 
 
-        # -------------------------------------------------
+        # =================================================
         # BASIC COUNTS
-        # -------------------------------------------------
+        # =================================================
 
         total_rows = len(df)
 
@@ -420,9 +478,9 @@ def get_validation(run_id: str):
         )
 
 
-        # -------------------------------------------------
+        # =================================================
         # DUPLICATES
-        # -------------------------------------------------
+        # =================================================
 
         duplicate_count = (
             df.duplicated(
@@ -436,13 +494,16 @@ def get_validation(run_id: str):
         )
 
 
-        # -------------------------------------------------
+        # =================================================
         # MISSING PATIENT IDs
-        # -------------------------------------------------
+        # =================================================
 
         missing_patients = (
+
             df["PATIENT_ID"].isna()
+
             |
+
             (
                 df["PATIENT_ID"]
                 .astype(str)
@@ -456,9 +517,9 @@ def get_validation(run_id: str):
         )
 
 
-        # -------------------------------------------------
+        # =================================================
         # INVALID DATES
-        # -------------------------------------------------
+        # =================================================
 
         start_date = pd.Timestamp(
             "2018-01-01"
@@ -474,10 +535,15 @@ def get_validation(run_id: str):
         )
 
         invalid_dates = (
+
             service_dates.isna()
+
             |
+
             (service_dates < start_date)
+
             |
+
             (service_dates > end_date)
         )
 
@@ -486,9 +552,9 @@ def get_validation(run_id: str):
         )
 
 
-        # -------------------------------------------------
+        # =================================================
         # SOURCE COUNTS
-        # -------------------------------------------------
+        # =================================================
 
         source_counts = (
             df.groupby("SRC")
@@ -497,9 +563,9 @@ def get_validation(run_id: str):
         )
 
 
-        # -------------------------------------------------
-        # RETURN VALIDATION RESULT
-        # -------------------------------------------------
+        # =================================================
+        # RETURN VALIDATION
+        # =================================================
 
         return {
 
@@ -521,10 +587,14 @@ def get_validation(run_id: str):
                     int(distinct_patients),
 
                 "distinct_diagnosis_codes":
-                    int(distinct_diagnosis_codes),
+                    int(
+                        distinct_diagnosis_codes
+                    ),
 
                 "source_counts": {
+
                     str(key): int(value)
+
                     for key, value
                     in source_counts.items()
                 },

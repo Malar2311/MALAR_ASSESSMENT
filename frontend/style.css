@@ -347,6 +347,24 @@ body {
 }
 
 
+/* ========================================= */
+/* BUTTON GROUP */
+/* ========================================= */
+
+.button-group {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+}
+
+
+/* ========================================= */
+/* RUN BUTTON */
+/* ========================================= */
+
 #runButton {
 
     border: none;
@@ -377,6 +395,35 @@ body {
     opacity: 0.6;
 
     cursor: not-allowed;
+}
+
+
+/* ========================================= */
+/* DOWNLOAD BUTTON */
+/* ========================================= */
+
+.download-button {
+
+    border: none;
+
+    padding:
+        13px 24px;
+
+    border-radius: 8px;
+
+    background: #2563eb;
+
+    color: white;
+
+    font-weight: 600;
+
+    cursor: pointer;
+}
+
+
+.download-button:hover {
+
+    background: #1d4ed8;
 }
 
 
@@ -452,6 +499,24 @@ body {
         align-items: flex-start;
 
         gap: 20px;
+    }
+}
+
+
+@media (max-width: 700px) {
+
+    .button-group {
+
+        width: 100%;
+
+        flex-direction: column;
+    }
+
+
+    #runButton,
+    .download-button {
+
+        width: 100%;
     }
 }
 
