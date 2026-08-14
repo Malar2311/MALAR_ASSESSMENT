@@ -1,6 +1,5 @@
 from pathlib import Path
 import pandas as pd
-from validation import validate_dataset
 
 
 # ---------------------------------------------------------
