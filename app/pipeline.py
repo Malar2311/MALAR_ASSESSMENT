@@ -1,10 +1,10 @@
 from pathlib import Path
+import hashlib
 import pandas as pd
 
-
-# =========================================================
-# VALIDATION IMPORT
-# =========================================================
+# ---------------------------------------------------------
+# IMPORT VALIDATION
+# ---------------------------------------------------------
 
 try:
     from app.validation import validate_dataset
@@ -12,9 +12,9 @@ except ModuleNotFoundError:
     from validation import validate_dataset
 
 
-# =========================================================
+# ---------------------------------------------------------
 # PROJECT PATHS
-# =========================================================
+# ---------------------------------------------------------
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,20 +26,19 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 FINAL_OUTPUT = OUTPUT_DIR / "final_harmonized.csv"
 
 
-# =========================================================
+# ---------------------------------------------------------
 # INPUT FILES
-# =========================================================
+# ---------------------------------------------------------
 
 SOURCE_A = DATA_DIR / "source_a_claims.csv"
 SOURCE_B = DATA_DIR / "source_b_claims.csv"
 SOURCE_C = DATA_DIR / "source_c_claims.csv"
-
 DX_DICTIONARY = DATA_DIR / "dx_dictionary.csv"
 
 
-# =========================================================
-# FINAL COLUMN ORDER
-# =========================================================
+# ---------------------------------------------------------
+# FINAL COLUMNS
+# ---------------------------------------------------------
 
 FINAL_COLUMNS = [
     "SRC",
@@ -60,28 +59,32 @@ FINAL_COLUMNS = [
 ]
 
 
-# =========================================================
+# ---------------------------------------------------------
+# PIPELINE REPORT
+# ---------------------------------------------------------
+
+PIPELINE_REPORT = {
+    "ingestion": {},
+    "combination": {},
+    "cleaning": {},
+    "dictionary": {},
+    "validation": {},
+    "export": {},
+}
+
+
+# ---------------------------------------------------------
 # CLEANING REPORT
-# =========================================================
+# ---------------------------------------------------------
 
 CLEANING_REPORT = {}
 
 
-# =========================================================
-# DIAGNOSIS CODE NORMALIZATION
-# =========================================================
+# ---------------------------------------------------------
+# NORMALIZE DIAGNOSIS CODE
+# ---------------------------------------------------------
 
 def normalize_diagnosis_code(value):
-    """
-    Normalize diagnosis codes.
-
-    Rules:
-    - Missing values become None
-    - Convert to string
-    - Remove leading/trailing spaces
-    - Convert to uppercase
-    - Remove decimal points
-    """
 
     if pd.isna(value):
         return None
@@ -95,21 +98,10 @@ def normalize_diagnosis_code(value):
 
 
 # =========================================================
-# VENDOR A TRANSFORMATION
+# VENDOR A
 # =========================================================
 
 def process_source_a():
-    """
-    Process Vendor A.
-
-    Vendor A stores diagnosis codes in eight separate
-    diagnosis columns. These are converted into rows.
-    """
-
-    if not SOURCE_A.exists():
-        raise FileNotFoundError(
-            f"Vendor A file not found: {SOURCE_A}"
-        )
 
     df = pd.read_csv(SOURCE_A)
 
@@ -125,10 +117,6 @@ def process_source_a():
         "diagnosis_code_7",
         "diagnosis_code_8",
     ]
-
-    # -----------------------------------------------------
-    # MELT DIAGNOSIS COLUMNS
-    # -----------------------------------------------------
 
     df = df.melt(
         id_vars=[
@@ -150,17 +138,9 @@ def process_source_a():
         value_name="DIAGNOSIS_CODE",
     )
 
-    # -----------------------------------------------------
-    # REMOVE EMPTY DIAGNOSIS VALUES
-    # -----------------------------------------------------
-
     df = df.dropna(
         subset=["DIAGNOSIS_CODE"]
-    ).copy()
-
-    # -----------------------------------------------------
-    # NORMALIZE DIAGNOSIS
-    # -----------------------------------------------------
+    )
 
     df["DIAGNOSIS_CODE"] = (
         df["DIAGNOSIS_CODE"]
@@ -169,11 +149,7 @@ def process_source_a():
 
     df = df.dropna(
         subset=["DIAGNOSIS_CODE"]
-    ).copy()
-
-    # -----------------------------------------------------
-    # NORMALIZE GENDER
-    # -----------------------------------------------------
+    )
 
     df["GENDER"] = (
         df["patient_gender"]
@@ -187,21 +163,14 @@ def process_source_a():
         "FEMALE": "F",
     })
 
-    # -----------------------------------------------------
-    # SERVICE DATE
-    # -----------------------------------------------------
-
     df["SERVICE_DATE"] = pd.to_datetime(
         df["service_from_date"],
         format="%Y%m%d",
         errors="coerce",
     )
 
-    # -----------------------------------------------------
-    # STANDARDIZED OUTPUT
-    # -----------------------------------------------------
-
     result = pd.DataFrame({
+
         "SRC": "A",
 
         "PATIENT_ID":
@@ -255,20 +224,10 @@ def process_source_a():
 
 
 # =========================================================
-# VENDOR B TRANSFORMATION
+# VENDOR B
 # =========================================================
 
 def process_source_b():
-    """
-    Process Vendor B.
-
-    Vendor B already has one diagnosis code per row.
-    """
-
-    if not SOURCE_B.exists():
-        raise FileNotFoundError(
-            f"Vendor B file not found: {SOURCE_B}"
-        )
 
     df = pd.read_csv(SOURCE_B)
 
@@ -276,18 +235,10 @@ def process_source_b():
         f"Vendor B input rows: {len(df)}"
     )
 
-    # -----------------------------------------------------
-    # NORMALIZE DIAGNOSIS
-    # -----------------------------------------------------
-
     df["DIAGNOSIS_CODE"] = (
         df["dx_code"]
         .apply(normalize_diagnosis_code)
     )
-
-    # -----------------------------------------------------
-    # NORMALIZE GENDER
-    # -----------------------------------------------------
 
     df["GENDER"] = (
         df["gender"]
@@ -301,21 +252,14 @@ def process_source_b():
         "FEMALE": "F",
     })
 
-    # -----------------------------------------------------
-    # SERVICE DATE
-    # -----------------------------------------------------
-
     df["SERVICE_DATE"] = pd.to_datetime(
         df["svc_date"],
         dayfirst=True,
         errors="coerce",
     )
 
-    # -----------------------------------------------------
-    # STANDARDIZED OUTPUT
-    # -----------------------------------------------------
-
     result = pd.DataFrame({
+
         "SRC": "B",
 
         "PATIENT_ID":
@@ -369,24 +313,10 @@ def process_source_b():
 
 
 # =========================================================
-# VENDOR C TRANSFORMATION
+# VENDOR C
 # =========================================================
 
 def process_source_c():
-    """
-    Process Vendor C.
-
-    Vendor C:
-    - Contains multiple versions of claims.
-    - Latest version is retained.
-    - Multiple diagnosis codes are separated by '|'.
-    - Diagnosis codes are exploded into separate rows.
-    """
-
-    if not SOURCE_C.exists():
-        raise FileNotFoundError(
-            f"Vendor C file not found: {SOURCE_C}"
-        )
 
     df = pd.read_csv(SOURCE_C)
 
@@ -395,17 +325,13 @@ def process_source_c():
     )
 
     # -----------------------------------------------------
-    # VERSION
+    # KEEP LATEST VERSION
     # -----------------------------------------------------
 
     df["version"] = pd.to_numeric(
         df["version"],
         errors="coerce"
     )
-
-    # -----------------------------------------------------
-    # KEEP LATEST VERSION
-    # -----------------------------------------------------
 
     df = df.sort_values(
         ["claim_ref", "version"]
@@ -417,12 +343,12 @@ def process_source_c():
     ).copy()
 
     print(
-        "Vendor C rows after latest-version "
-        f"selection: {len(df)}"
+        "Vendor C rows after latest-version selection:",
+        len(df)
     )
 
     # -----------------------------------------------------
-    # DIAGNOSIS SPLITTING
+    # SPLIT DIAGNOSIS CODES
     # -----------------------------------------------------
 
     df["diagnosis_codes"] = (
@@ -440,10 +366,6 @@ def process_source_c():
         "DIAGNOSIS_CODE"
     ).copy()
 
-    # -----------------------------------------------------
-    # NORMALIZE DIAGNOSIS
-    # -----------------------------------------------------
-
     df["DIAGNOSIS_CODE"] = (
         df["DIAGNOSIS_CODE"]
         .apply(normalize_diagnosis_code)
@@ -453,13 +375,8 @@ def process_source_c():
         subset=["DIAGNOSIS_CODE"]
     ).copy()
 
-    print(
-        "Vendor C rows after diagnosis "
-        f"splitting: {len(df)}"
-    )
-
     # -----------------------------------------------------
-    # NORMALIZE GENDER
+    # GENDER
     # -----------------------------------------------------
 
     df["GENDER"] = (
@@ -484,26 +401,13 @@ def process_source_c():
         errors="coerce"
     )
 
-    print(
-        "Vendor C invalid dates:",
-        int(df["SERVICE_DATE"].isna().sum())
-    )
-
-    print(
-        "Vendor C date range:",
-        df["SERVICE_DATE"].min(),
-        "to",
-        df["SERVICE_DATE"].max()
-    )
-
     # -----------------------------------------------------
-    # STANDARDIZED OUTPUT
+    # STANDARDIZED DATASET
     # -----------------------------------------------------
 
     result = pd.DataFrame({
 
-        "SRC":
-            "C",
+        "SRC": "C",
 
         "PATIENT_ID":
             df["pt_ref"],
@@ -560,7 +464,7 @@ def process_source_c():
 
 
 # =========================================================
-# COMBINE ALL SOURCES
+# COMBINE SOURCES
 # =========================================================
 
 def combine_sources(
@@ -568,9 +472,6 @@ def combine_sources(
     source_b,
     source_c
 ):
-    """
-    Combine all standardized vendor datasets.
-    """
 
     combined = pd.concat(
         [
@@ -594,26 +495,13 @@ def combine_sources(
 # =========================================================
 
 def clean_combined_data(df):
-    """
-    Apply common cleaning rules.
-
-    Rules:
-    1. Remove missing patient IDs.
-    2. Keep service dates between
-       2018-01-01 and 2025-02-28.
-    3. Normalize diagnosis codes.
-    4. Normalize gender.
-    5. Remove duplicate
-       SRC + CLAIM_ID + DIAGNOSIS_CODE.
-    6. Preserve required final columns.
-    """
 
     global CLEANING_REPORT
 
     initial_rows = len(df)
 
     # -----------------------------------------------------
-    # 1. PATIENT ID
+    # MISSING PATIENT IDS
     # -----------------------------------------------------
 
     df["PATIENT_ID"] = (
@@ -642,13 +530,8 @@ def clean_combined_data(df):
         ~missing_patient_mask
     ].copy()
 
-    print(
-        "Dropped missing patient rows:",
-        dropped_missing_patient
-    )
-
     # -----------------------------------------------------
-    # 2. SERVICE DATE
+    # DATE RANGE
     # -----------------------------------------------------
 
     start_date = pd.Timestamp(
@@ -659,7 +542,6 @@ def clean_combined_data(df):
         "2025-02-28"
     )
 
-    # Make sure dates are datetime
     df["SERVICE_DATE"] = pd.to_datetime(
         df["SERVICE_DATE"],
         errors="coerce"
@@ -668,9 +550,15 @@ def clean_combined_data(df):
     invalid_date_mask = (
         df["SERVICE_DATE"].isna()
         |
-        (df["SERVICE_DATE"] < start_date)
+        (
+            df["SERVICE_DATE"]
+            < start_date
+        )
         |
-        (df["SERVICE_DATE"] > end_date)
+        (
+            df["SERVICE_DATE"]
+            > end_date
+        )
     )
 
     dropped_invalid_dates = int(
@@ -681,13 +569,8 @@ def clean_combined_data(df):
         ~invalid_date_mask
     ].copy()
 
-    print(
-        "Dropped invalid/out-of-range dates:",
-        dropped_invalid_dates
-    )
-
     # -----------------------------------------------------
-    # 3. DIAGNOSIS CODE
+    # DIAGNOSIS
     # -----------------------------------------------------
 
     df["DIAGNOSIS_CODE"] = (
@@ -695,18 +578,20 @@ def clean_combined_data(df):
         .apply(normalize_diagnosis_code)
     )
 
-    missing_diagnosis_codes = int(
-        df["DIAGNOSIS_CODE"]
-        .isna()
-        .sum()
+    invalid_diagnosis_mask = (
+        df["DIAGNOSIS_CODE"].isna()
     )
 
-    df = df.dropna(
-        subset=["DIAGNOSIS_CODE"]
-    ).copy()
+    dropped_invalid_diagnosis = int(
+        invalid_diagnosis_mask.sum()
+    )
+
+    df = df.loc[
+        ~invalid_diagnosis_mask
+    ].copy()
 
     # -----------------------------------------------------
-    # 4. GENDER
+    # GENDER
     # -----------------------------------------------------
 
     df["GENDER"] = (
@@ -722,7 +607,7 @@ def clean_combined_data(df):
     })
 
     # -----------------------------------------------------
-    # 5. DUPLICATES
+    # DUPLICATES
     # -----------------------------------------------------
 
     duplicate_keys = [
@@ -731,52 +616,39 @@ def clean_combined_data(df):
         "DIAGNOSIS_CODE"
     ]
 
-    duplicate_check = df.duplicated(
+    duplicate_mask = df.duplicated(
         subset=duplicate_keys,
         keep="first"
     )
 
-    print(
-        "\nDuplicate rows by source "
-        "BEFORE removal:"
-    )
-
     duplicate_by_source = (
-        df.loc[duplicate_check]
+        df.loc[duplicate_mask]
         .groupby("SRC")
         .size()
+        .to_dict()
     )
 
-    print(duplicate_by_source)
-
     dropped_duplicates = int(
-        duplicate_check.sum()
+        duplicate_mask.sum()
     )
 
     df = df.loc[
-        ~duplicate_check
+        ~duplicate_mask
     ].copy()
 
-    print(
-        "Dropped duplicate rows:",
-        dropped_duplicates
-    )
-
     # -----------------------------------------------------
-    # 6. FINAL COLUMN ORDER
+    # COLUMN ORDER
     # -----------------------------------------------------
 
-    df = df[FINAL_COLUMNS].copy()
-
-    # -----------------------------------------------------
-    # CLEANING REPORT
-    # -----------------------------------------------------
+    df = df[
+        FINAL_COLUMNS
+    ].copy()
 
     final_rows = len(df)
 
-    total_removed = (
-        initial_rows - final_rows
-    )
+    # -----------------------------------------------------
+    # REPORT
+    # -----------------------------------------------------
 
     CLEANING_REPORT = {
 
@@ -784,22 +656,24 @@ def clean_combined_data(df):
             int(initial_rows),
 
         "dropped_missing_patient_ids":
-            dropped_missing_patient,
+            int(dropped_missing_patient),
 
         "dropped_invalid_dates":
-            dropped_invalid_dates,
+            int(dropped_invalid_dates),
 
         "dropped_invalid_diagnosis_codes":
-            missing_diagnosis_codes,
+            int(dropped_invalid_diagnosis),
 
         "dropped_duplicate_rows":
-            dropped_duplicates,
+            int(dropped_duplicates),
 
         "final_rows":
             int(final_rows),
 
         "total_rows_removed":
-            int(total_removed),
+            int(
+                initial_rows - final_rows
+            ),
 
         "date_range": {
             "start":
@@ -810,16 +684,14 @@ def clean_combined_data(df):
         },
 
         "duplicate_rows_by_source": {
-            str(key): int(value)
-            for key, value
-            in duplicate_by_source
-            .to_dict()
-            .items()
+            str(k): int(v)
+            for k, v
+            in duplicate_by_source.items()
         },
 
         "final_rows_by_source": {
-            str(key): int(value)
-            for key, value
+            str(k): int(v)
+            for k, v
             in df.groupby("SRC")
             .size()
             .to_dict()
@@ -827,54 +699,24 @@ def clean_combined_data(df):
         }
     }
 
-    # -----------------------------------------------------
-    # FINAL COUNTS
-    # -----------------------------------------------------
-
     print(
-        "Rows after global cleaning:",
+        "\nRows after global cleaning:",
         final_rows
     )
 
     print(
         "Total rows removed:",
-        total_removed
-    )
-
-    print(
-        "\nRows by source after cleaning:"
-    )
-
-    print(
-        df.groupby("SRC").size()
-    )
-
-    print(
-        "\nDate range by source:"
-    )
-
-    print(
-        df.groupby("SRC")["SERVICE_DATE"]
-        .agg(["min", "max"])
+        initial_rows - final_rows
     )
 
     return df
 
 
 # =========================================================
-# DIAGNOSIS DICTIONARY LOOKUP
+# DIAGNOSIS DICTIONARY
 # =========================================================
 
 def add_diagnosis_descriptions(df):
-    """
-    Add diagnosis descriptions using dx_dictionary.csv.
-    """
-
-    if not DX_DICTIONARY.exists():
-        raise FileNotFoundError(
-            f"Diagnosis dictionary not found: "
-            f"{DX_DICTIONARY}"
-        )
 
     dictionary = pd.read_csv(
         DX_DICTIONARY
@@ -885,26 +727,13 @@ def add_diagnosis_descriptions(df):
         len(dictionary)
     )
 
-    print(
-        "Diagnosis dictionary columns:"
-    )
-
-    print(
-        dictionary.columns.tolist()
-    )
-
-    # -----------------------------------------------------
-    # IDENTIFY COLUMNS
-    # -----------------------------------------------------
-
     code_column = None
     description_column = None
 
     for column in dictionary.columns:
 
         column_lower = (
-            column.lower()
-            .strip()
+            column.lower().strip()
         )
 
         if column_lower in [
@@ -914,6 +743,7 @@ def add_diagnosis_descriptions(df):
             "icd_code",
             "dx"
         ]:
+
             code_column = column
 
         if column_lower in [
@@ -923,6 +753,7 @@ def add_diagnosis_descriptions(df):
             "desc",
             "diagnosis"
         ]:
+
             description_column = column
 
     if code_column is None:
@@ -938,20 +769,6 @@ def add_diagnosis_descriptions(df):
             "Could not identify description "
             "column in dx_dictionary.csv"
         )
-
-    print(
-        "Dictionary code column:",
-        code_column
-    )
-
-    print(
-        "Dictionary description column:",
-        description_column
-    )
-
-    # -----------------------------------------------------
-    # NORMALIZE DICTIONARY
-    # -----------------------------------------------------
 
     dictionary["DIAGNOSIS_CODE"] = (
         dictionary[code_column]
@@ -973,19 +790,11 @@ def add_diagnosis_descriptions(df):
         subset=["DIAGNOSIS_CODE"]
     )
 
-    # -----------------------------------------------------
-    # REMOVE OLD DESCRIPTION
-    # -----------------------------------------------------
-
     if "DIAGNOSIS_DESC" in df.columns:
 
         df = df.drop(
             columns=["DIAGNOSIS_DESC"]
         )
-
-    # -----------------------------------------------------
-    # LEFT JOIN
-    # -----------------------------------------------------
 
     df = df.merge(
         dictionary,
@@ -993,52 +802,29 @@ def add_diagnosis_descriptions(df):
         how="left"
     )
 
-    # -----------------------------------------------------
-    # MISSING DESCRIPTIONS
-    # -----------------------------------------------------
-
-    missing_descriptions = (
+    missing_descriptions = int(
         df["DIAGNOSIS_DESC"]
         .isna()
+        .sum()
     )
 
     print(
         "Rows without dictionary description:",
-        int(missing_descriptions.sum())
+        missing_descriptions
     )
-
-    print(
-        "Distinct codes without description:"
-    )
-
-    print(
-        df.loc[
-            missing_descriptions,
-            "DIAGNOSIS_CODE"
-        ]
-        .drop_duplicates()
-        .tolist()
-    )
-
-    # -----------------------------------------------------
-    # FINAL COLUMN ORDER
-    # -----------------------------------------------------
-
-    df = df[FINAL_COLUMNS].copy()
 
     return df
 
 
 # =========================================================
-# EXPORT FINAL DATASET
+# EXPORT
 # =========================================================
 
 def export_final_dataset(df):
-    """
-    Export final harmonized dataset as CSV.
-    """
 
-    df = df[FINAL_COLUMNS].copy()
+    df = df[
+        FINAL_COLUMNS
+    ].copy()
 
     df.to_csv(
         FINAL_OUTPUT,
@@ -1047,69 +833,64 @@ def export_final_dataset(df):
     )
 
     print(
-        "\n" + "=" * 60
+        "\nFinal dataset exported:"
     )
 
     print(
-        "FINAL DATASET EXPORTED"
+        FINAL_OUTPUT
     )
 
     print(
-        "=" * 60
-    )
-
-    print(
-        f"File: {FINAL_OUTPUT}"
-    )
-
-    print(
-        f"Rows: {len(df)}"
-    )
-
-    print(
-        f"Columns: {len(df.columns)}"
-    )
-
-    print(
-        "\nFinal shape:"
-    )
-
-    print(
-        df.shape
-    )
-
-    print(
-        "\nFinal columns:"
-    )
-
-    print(
-        df.columns.tolist()
+        "Rows:",
+        len(df)
     )
 
     return FINAL_OUTPUT
 
 
 # =========================================================
-# MAIN PIPELINE EXECUTION
+# FILE HASH
+# =========================================================
+
+def get_file_hash():
+
+    if not FINAL_OUTPUT.exists():
+        return None
+
+    sha256 = hashlib.sha256()
+
+    with open(
+        FINAL_OUTPUT,
+        "rb"
+    ) as file:
+
+        for chunk in iter(
+            lambda: file.read(1024 * 1024),
+            b""
+        ):
+
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
+
+
+# =========================================================
+# MAIN
 # =========================================================
 
 if __name__ == "__main__":
 
-    print(
-        "\n" + "=" * 60
+    source_a_input = len(
+        pd.read_csv(SOURCE_A)
     )
 
-    print(
-        "MULTI-SOURCE DATA HARMONIZATION PIPELINE"
+    source_b_input = len(
+        pd.read_csv(SOURCE_B)
     )
 
-    print(
-        "=" * 60
+    source_c_input = len(
+        pd.read_csv(SOURCE_C)
     )
-
-    # -----------------------------------------------------
-    # STEP 1 — PROCESS VENDORS
-    # -----------------------------------------------------
 
     source_a = process_source_a()
 
@@ -1117,9 +898,25 @@ if __name__ == "__main__":
 
     source_c = process_source_c()
 
-    # -----------------------------------------------------
-    # STEP 2 — COMBINE
-    # -----------------------------------------------------
+    PIPELINE_REPORT["ingestion"] = {
+
+        "input_rows": int(
+            source_a_input
+            + source_b_input
+            + source_c_input
+        ),
+
+        "output_rows": int(
+            len(source_a)
+            + len(source_b)
+            + len(source_c)
+        ),
+
+        "dropped": 0,
+
+        "reason":
+            "Vendor-specific transformation"
+    }
 
     combined = combine_sources(
         source_a,
@@ -1127,45 +924,115 @@ if __name__ == "__main__":
         source_c
     )
 
-    # -----------------------------------------------------
-    # STEP 3 — CLEAN
-    # -----------------------------------------------------
+    PIPELINE_REPORT["combination"] = {
+
+        "input_rows": int(
+            len(source_a)
+            + len(source_b)
+            + len(source_c)
+        ),
+
+        "output_rows": int(
+            len(combined)
+        ),
+
+        "dropped": 0,
+
+        "reason":
+            "Standardized vendor datasets combined"
+    }
 
     final_data = clean_combined_data(
         combined
     )
 
-    # -----------------------------------------------------
-    # STEP 4 — DIAGNOSIS DICTIONARY
-    # -----------------------------------------------------
+    PIPELINE_REPORT["cleaning"] = {
+
+        "input_rows":
+            CLEANING_REPORT["initial_rows"],
+
+        "output_rows":
+            CLEANING_REPORT["final_rows"],
+
+        "dropped":
+            CLEANING_REPORT["total_rows_removed"],
+
+        "reason": (
+            "Missing patient IDs: "
+            + str(
+                CLEANING_REPORT[
+                    "dropped_missing_patient_ids"
+                ]
+            )
+            + "; Invalid dates: "
+            + str(
+                CLEANING_REPORT[
+                    "dropped_invalid_dates"
+                ]
+            )
+            + "; Invalid diagnosis codes: "
+            + str(
+                CLEANING_REPORT[
+                    "dropped_invalid_diagnosis_codes"
+                ]
+            )
+            + "; Duplicates: "
+            + str(
+                CLEANING_REPORT[
+                    "dropped_duplicate_rows"
+                ]
+            )
+        )
+    }
+
+    dictionary_input = len(
+        final_data
+    )
 
     final_data = add_diagnosis_descriptions(
         final_data
     )
 
-    # -----------------------------------------------------
-    # STEP 5 — VALIDATION
-    # -----------------------------------------------------
+    PIPELINE_REPORT["dictionary"] = {
 
-    print(
-        "\n" + "=" * 60
-    )
+        "input_rows":
+            int(dictionary_input),
 
-    print(
-        "RUNNING VALIDATION"
-    )
+        "output_rows":
+            int(len(final_data)),
 
-    print(
-        "=" * 60
-    )
+        "dropped":
+            0,
+
+        "reason":
+            "Diagnosis descriptions added using reference dictionary"
+    }
 
     validation_passed = bool(
-        validate_dataset(final_data)
+        validate_dataset(
+            final_data
+        )
     )
 
-    # -----------------------------------------------------
-    # STEP 6 — EXPORT
-    # -----------------------------------------------------
+    PIPELINE_REPORT["validation"] = {
+
+        "input_rows":
+            int(len(final_data)),
+
+        "output_rows":
+            int(len(final_data)),
+
+        "dropped":
+            0,
+
+        "reason":
+            (
+                "All validation checks passed"
+                if validation_passed
+                else
+                "One or more validation checks failed"
+            )
+    }
 
     if validation_passed:
 
@@ -1173,17 +1040,27 @@ if __name__ == "__main__":
             final_data
         )
 
+        PIPELINE_REPORT["export"] = {
+
+            "input_rows":
+                int(len(final_data)),
+
+            "output_rows":
+                int(len(final_data)),
+
+            "dropped":
+                0,
+
+            "reason":
+                "Validated dataset exported successfully"
+        }
+
+        print(
+            "\nPipeline completed successfully."
+        )
+
     else:
 
         print(
-            "\nFinal dataset was NOT exported "
-            "because validation failed."
+            "\nPipeline stopped because validation failed."
         )
-
-    # -----------------------------------------------------
-    # FINAL INFORMATION
-    # -----------------------------------------------------
-
-    print(
-        "\nPipeline execution completed."
-    )

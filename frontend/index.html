@@ -24,227 +24,206 @@
 
 <body>
 
-    <!-- ========================================= -->
-    <!-- HEADER -->
-    <!-- ========================================= -->
+<header class="header">
 
-    <header class="header">
+    <div>
 
-        <div>
+        <h1>
+            Data Harmonization Pipeline
+        </h1>
 
-            <h1>
-                Data Harmonization Pipeline
-            </h1>
+        <p>
+            Multi-source healthcare claims processing
+        </p>
 
-            <p>
-                Multi-source healthcare claims processing
-            </p>
+    </div>
+
+    <div class="status">
+
+        <span
+            id="statusDot"
+            class="status-dot"
+        ></span>
+
+        <span id="statusText">
+            Checking API...
+        </span>
+
+    </div>
+
+</header>
+
+
+<main class="container">
+
+
+    <!-- SUMMARY -->
+
+    <section class="cards">
+
+        <div class="card">
+
+            <div class="card-title">
+                Total Records
+            </div>
+
+            <div
+                id="totalRows"
+                class="card-value"
+            >
+                -
+            </div>
 
         </div>
 
-        <div class="status">
 
-            <span
-                id="statusDot"
-                class="status-dot"
-            ></span>
+        <div class="card">
 
-            <span id="statusText">
-                Checking API...
-            </span>
+            <div class="card-title">
+                Claims
+            </div>
+
+            <div
+                id="claims"
+                class="card-value"
+            >
+                -
+            </div>
 
         </div>
 
-    </header>
+
+        <div class="card">
+
+            <div class="card-title">
+                Patients
+            </div>
+
+            <div
+                id="patients"
+                class="card-value"
+            >
+                -
+            </div>
+
+        </div>
 
 
-    <!-- ========================================= -->
-    <!-- MAIN -->
-    <!-- ========================================= -->
+        <div class="card">
 
-    <main class="container">
+            <div class="card-title">
+                Diagnosis Codes
+            </div>
+
+            <div
+                id="diagnosisCodes"
+                class="card-value"
+            >
+                -
+            </div>
+
+        </div>
+
+    </section>
 
 
-        <!-- ===================================== -->
-        <!-- SUMMARY CARDS -->
-        <!-- ===================================== -->
+    <!-- SOURCE DISTRIBUTION -->
 
-        <section class="cards">
+    <section class="grid">
 
+        <div class="panel">
 
-            <div class="card">
+            <div class="panel-header">
 
-                <div class="card-title">
-                    Total Records
-                </div>
+                <div>
 
-                <div
-                    id="totalRows"
-                    class="card-value"
-                >
-                    -
+                    <h2>
+                        Source Distribution
+                    </h2>
+
+                    <p>
+                        Records in final dataset
+                    </p>
+
                 </div>
 
             </div>
 
 
-            <div class="card">
+            <div id="sourceList">
 
-                <div class="card-title">
-                    Claims
-                </div>
+                <div class="source-item">
 
-                <div
-                    id="claims"
-                    class="card-value"
-                >
-                    -
-                </div>
+                    <div class="source-info">
 
-            </div>
+                        <span>
+                            Vendor A
+                        </span>
 
+                        <strong id="sourceA">
+                            -
+                        </strong>
 
-            <div class="card">
+                    </div>
 
-                <div class="card-title">
-                    Patients
-                </div>
+                    <div class="progress">
 
-                <div
-                    id="patients"
-                    class="card-value"
-                >
-                    -
-                </div>
-
-            </div>
-
-
-            <div class="card">
-
-                <div class="card-title">
-                    Diagnosis Codes
-                </div>
-
-                <div
-                    id="diagnosisCodes"
-                    class="card-value"
-                >
-                    -
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- ===================================== -->
-        <!-- CONTENT GRID -->
-        <!-- ===================================== -->
-
-        <section class="grid">
-
-
-            <!-- ================================= -->
-            <!-- SOURCE DISTRIBUTION -->
-            <!-- ================================= -->
-
-            <div class="panel">
-
-                <div class="panel-header">
-
-                    <div>
-
-                        <h2>
-                            Source Distribution
-                        </h2>
-
-                        <p>
-                            Records after global cleaning
-                        </p>
+                        <div
+                            id="barA"
+                            class="progress-bar"
+                        ></div>
 
                     </div>
 
                 </div>
 
 
-                <div class="source-list">
+                <div class="source-item">
 
+                    <div class="source-info">
 
-                    <div class="source-item">
+                        <span>
+                            Vendor B
+                        </span>
 
-                        <div class="source-info">
-
-                            <span>
-                                Vendor A
-                            </span>
-
-                            <strong id="sourceA">
-                                -
-                            </strong>
-
-                        </div>
-
-                        <div class="progress">
-
-                            <div
-                                id="barA"
-                                class="progress-bar"
-                            ></div>
-
-                        </div>
+                        <strong id="sourceB">
+                            -
+                        </strong>
 
                     </div>
 
+                    <div class="progress">
 
-                    <div class="source-item">
-
-                        <div class="source-info">
-
-                            <span>
-                                Vendor B
-                            </span>
-
-                            <strong id="sourceB">
-                                -
-                            </strong>
-
-                        </div>
-
-                        <div class="progress">
-
-                            <div
-                                id="barB"
-                                class="progress-bar"
-                            ></div>
-
-                        </div>
+                        <div
+                            id="barB"
+                            class="progress-bar"
+                        ></div>
 
                     </div>
 
+                </div>
 
-                    <div class="source-item">
 
-                        <div class="source-info">
+                <div class="source-item">
 
-                            <span>
-                                Vendor C
-                            </span>
+                    <div class="source-info">
 
-                            <strong id="sourceC">
-                                -
-                            </strong>
+                        <span>
+                            Vendor C
+                        </span>
 
-                        </div>
+                        <strong id="sourceC">
+                            -
+                        </strong>
 
-                        <div class="progress">
+                    </div>
 
-                            <div
-                                id="barC"
-                                class="progress-bar"
-                            ></div>
+                    <div class="progress">
 
-                        </div>
+                        <div
+                            id="barC"
+                            class="progress-bar"
+                        ></div>
 
                     </div>
 
@@ -252,188 +231,323 @@
 
             </div>
 
-
-            <!-- ================================= -->
-            <!-- PIPELINE -->
-            <!-- ================================= -->
-
-            <div class="panel">
-
-                <div class="panel-header">
-
-                    <div>
-
-                        <h2>
-                            Pipeline Stages
-                        </h2>
-
-                        <p>
-                            Processing workflow
-                        </p>
-
-                    </div>
-
-                </div>
+        </div>
 
 
-                <div
-                    id="pipelineStages"
-                    class="pipeline"
-                >
+        <!-- PIPELINE -->
 
-                    <div class="pipeline-item">
+        <div class="panel">
 
-                        <span class="stage-icon">
-                            ✓
-                        </span>
+            <div class="panel-header">
 
-                        <span>
-                            Ingestion
-                        </span>
+                <div>
 
-                    </div>
+                    <h2>
+                        Pipeline Stages
+                    </h2>
 
-
-                    <div class="pipeline-item">
-
-                        <span class="stage-icon">
-                            ✓
-                        </span>
-
-                        <span>
-                            Combination
-                        </span>
-
-                    </div>
-
-
-                    <div class="pipeline-item">
-
-                        <span class="stage-icon">
-                            ✓
-                        </span>
-
-                        <span>
-                            Cleaning
-                        </span>
-
-                    </div>
-
-
-                    <div class="pipeline-item">
-
-                        <span class="stage-icon">
-                            ✓
-                        </span>
-
-                        <span>
-                            Dictionary Lookup
-                        </span>
-
-                    </div>
-
-
-                    <div class="pipeline-item">
-
-                        <span class="stage-icon">
-                            ✓
-                        </span>
-
-                        <span>
-                            Validation
-                        </span>
-
-                    </div>
-
-
-                    <div class="pipeline-item">
-
-                        <span class="stage-icon">
-                            ✓
-                        </span>
-
-                        <span>
-                            Export
-                        </span>
-
-                    </div>
+                    <p>
+                        Processing workflow
+                    </p>
 
                 </div>
 
             </div>
 
-        </section>
+
+            <div
+                id="pipelineStages"
+                class="pipeline"
+            >
+
+                <div class="pipeline-item">
+
+                    <span class="stage-icon">
+                        -
+                    </span>
+
+                    <span>
+                        Ingestion
+                    </span>
+
+                </div>
+
+                <div class="pipeline-item">
+
+                    <span class="stage-icon">
+                        -
+                    </span>
+
+                    <span>
+                        Combination
+                    </span>
+
+                </div>
+
+                <div class="pipeline-item">
+
+                    <span class="stage-icon">
+                        -
+                    </span>
+
+                    <span>
+                        Cleaning
+                    </span>
+
+                </div>
+
+                <div class="pipeline-item">
+
+                    <span class="stage-icon">
+                        -
+                    </span>
+
+                    <span>
+                        Dictionary Lookup
+                    </span>
+
+                </div>
+
+                <div class="pipeline-item">
+
+                    <span class="stage-icon">
+                        -
+                    </span>
+
+                    <span>
+                        Validation
+                    </span>
+
+                </div>
+
+                <div class="pipeline-item">
+
+                    <span class="stage-icon">
+                        -
+                    </span>
+
+                    <span>
+                        Export
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
 
 
-        <!-- ===================================== -->
-        <!-- RUN PIPELINE -->
-        <!-- ===================================== -->
+    <!-- STAGE DETAILS -->
 
-        <section class="run-panel">
+    <section class="panel stage-report">
+
+        <div class="panel-header">
 
             <div>
 
                 <h2>
-                    Run Data Pipeline
+                    Stage Details
                 </h2>
 
                 <p>
-                    Process all vendor sources,
-                    validate the output and generate
-                    the harmonized dataset.
+                    Input rows, output rows, dropped rows and processing reason
                 </p>
 
             </div>
 
-
-            <div class="button-group">
-
-                <button
-                    id="runButton"
-                    onclick="runPipeline()"
-                >
-                    Run Pipeline
-                </button>
+        </div>
 
 
-                <button
-                    class="download-button"
-                    onclick="downloadCSV()"
-                >
-                    Download CSV
-                </button>
+        <div class="table-container">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Stage
+                        </th>
+
+                        <th>
+                            Input Rows
+                        </th>
+
+                        <th>
+                            Output Rows
+                        </th>
+
+                        <th>
+                            Dropped
+                        </th>
+
+                        <th>
+                            Reason
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="stageReportBody">
+
+                    <tr>
+
+                        <td colspan="5">
+                            Run the pipeline to view stage details.
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- VALIDATION -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <h2>
+                    Acceptance Checks
+                </h2>
+
+                <p>
+                    Validation results from the actual final dataset
+                </p>
 
             </div>
 
-        </section>
+            <div
+                id="validationOverall"
+                class="validation-badge"
+            >
+                Not Run
+            </div>
+
+        </div>
 
 
-        <!-- ===================================== -->
-        <!-- RUN RESULT -->
-        <!-- ===================================== -->
-
-        <section
-            id="resultPanel"
-            class="result-panel hidden"
+        <div
+            id="validationList"
+            class="validation-list"
         >
+
+            <div class="empty-message">
+                Run the pipeline to view validation results.
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- REPRODUCIBILITY -->
+
+    <section class="panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <h2>
+                    Reproducibility
+                </h2>
+
+                <p>
+                    Checks whether consecutive pipeline runs produce identical output
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div id="reproducibility">
+
+            Run the pipeline twice to compare outputs.
+
+        </div>
+
+    </section>
+
+
+    <!-- RUN PANEL -->
+
+    <section class="run-panel">
+
+        <div>
+
+            <h2>
+                Run Data Pipeline
+            </h2>
+
+            <p>
+                Process all vendor sources, validate the output and generate
+                the harmonized dataset.
+            </p>
+
+        </div>
+
+
+        <div class="button-group">
+
+            <button
+                id="runButton"
+                onclick="runPipeline()"
+            >
+                Run Pipeline
+            </button>
+
+
+            <button
+                class="download-button"
+                onclick="downloadCSV()"
+            >
+                Download CSV
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- RESULT -->
+
+    <section
+        id="resultPanel"
+        class="panel hidden"
+    >
+
+        <div class="panel-header">
 
             <h2>
                 Latest Run
             </h2>
 
-            <div id="runResult"></div>
+        </div>
 
-        </section>
+        <div id="runResult"></div>
+
+    </section>
 
 
-    </main>
+</main>
 
 
-    <!-- ========================================= -->
-    <!-- JAVASCRIPT -->
-    <!-- ========================================= -->
-
-    <script src="script.js"></script>
+<script src="script.js"></script>
 
 </body>
 

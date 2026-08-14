@@ -2,43 +2,59 @@
 
 ## Overview
 
-This project is a Python-based data engineering pipeline designed to integrate, standardize, clean, validate, and enrich healthcare claims data received from multiple vendor sources.
+This project is a data engineering pipeline that combines healthcare claims data from three different vendors.
 
-The system processes data from Vendor A, Vendor B, and Vendor C, converts them into a common schema, performs data quality checks, maps diagnosis codes using a reference dictionary, and generates a final harmonized dataset.
+The three vendors provide similar information, but their files have different column names, formats, date formats, and ways of storing diagnosis codes.
 
-The project also provides a FastAPI backend and a web dashboard for running the pipeline, viewing dataset statistics, monitoring the processing workflow, and downloading the final CSV file.
+The pipeline reads the three source files, converts them into a common format, cleans the data, adds diagnosis descriptions using a dictionary, validates the final dataset, and exports one harmonized CSV file.
+
+The project also includes a FastAPI backend and a simple web dashboard for running the pipeline, viewing results, checking validation, and downloading the final CSV.
 
 ---
 
 ## Problem Statement
 
-Healthcare claims data received from different vendors often has different structures, column names, date formats, diagnosis representations, and data quality issues.
+Healthcare claims data from different vendors is often stored in different formats.
 
-Combining these datasets directly can result in duplicate records, invalid dates, missing patient information, inconsistent diagnosis codes, and unreliable analysis.
+For example:
 
-This project provides a standardized data pipeline to transform multiple vendor datasets into a single clean, validated, and harmonized healthcare claims dataset.
+- Vendor A stores multiple diagnosis codes in separate columns.
+- Vendor B stores one diagnosis code per row.
+- Vendor C stores multiple diagnosis codes in one column.
+- Vendor C can contain multiple versions of the same claim.
+- Column names are different between vendors.
+- Date formats are different.
+- Diagnosis codes can contain dots or lowercase letters.
+- Some records can have missing patient IDs.
+- Duplicate records can exist.
+
+If the files are simply combined without processing, the final dataset can contain duplicates, invalid dates, inconsistent diagnosis codes, and incomplete records.
+
+This project solves this problem by transforming all three sources into one common, clean, and validated dataset.
 
 ---
 
 ## Objectives
 
-- Integrate healthcare claims data from multiple vendors.
-- Standardize vendor-specific schemas.
-- Normalize patient and claim identifiers.
-- Standardize service dates.
+The main objectives are:
+
+- Read claims data from three vendors.
+- Understand the different structures used by each vendor.
+- Convert each vendor into a common schema.
+- Handle multiple diagnosis codes correctly.
+- Select the latest Vendor C claim version.
 - Normalize diagnosis codes.
-- Handle multiple diagnosis codes.
-- Select the latest applicable Vendor C records.
-- Combine all vendor datasets.
-- Remove invalid and incomplete records.
+- Normalize gender values.
+- Convert service dates into proper dates.
+- Remove records with missing patient IDs.
+- Remove records outside the allowed date range.
 - Remove duplicate records.
-- Apply a common service-date range.
-- Enrich diagnosis codes using a reference dictionary.
+- Add diagnosis descriptions using the diagnosis dictionary.
 - Validate the final dataset.
-- Export the final standardized CSV.
-- Provide REST APIs for accessing the processed data.
-- Provide a dashboard for monitoring the pipeline.
-- Allow users to download the final harmonized dataset.
+- Export the final harmonized CSV.
+- Provide REST API endpoints.
+- Provide a web dashboard for monitoring the pipeline.
+- Allow users to download the final dataset.
 
 ---
 
@@ -69,30 +85,30 @@ Combine Sources
 Global Data Cleaning
      |
      v
-Diagnosis Dictionary Mapping
+Diagnosis Dictionary Lookup
      |
      v
-Dataset Validation
+Validation
      |
      v
 Final Harmonized CSV
      |
-     +-------------------+
-     |                   |
-     v                   v
-  FastAPI            Web Dashboard
-     |                   |
-     +---------+---------+
-               |
-               v
-         Download CSV
+     +------------------+
+     |                  |
+     v                  v
+  FastAPI          Web Dashboard
+     |                  |
+     +--------+---------+
+              |
+              v
+        Download CSV
 ```
 
 ---
 
-## Data Sources
+## Input Data
 
-The project uses three vendor datasets and one diagnosis reference dictionary.
+The project uses four input files:
 
 ```text
 data/
@@ -102,181 +118,241 @@ data/
 └── dx_dictionary.csv
 ```
 
+The first three files contain healthcare claims from different vendors.
+
+The fourth file contains diagnosis codes and their descriptions.
+
+The data provided for the assessment is fabricated data.
+
 ---
 
-## Vendor A Processing
+# Vendor Processing
 
-Vendor A data is transformed into the common healthcare claims schema.
+## Vendor A
 
-Processing includes:
+Vendor A stores multiple diagnosis codes in separate columns.
 
-- Reading Vendor A data
-- Standardizing column names
-- Normalizing patient identifiers
-- Converting service dates
-- Standardizing diagnosis codes
-- Mapping vendor-specific fields
-- Creating the standardized Vendor A dataset
-
-Vendor A:
+The diagnosis columns are:
 
 ```text
-Input rows  : 26,004
-Output rows : 71,457
+diagnosis_code_1
+diagnosis_code_2
+diagnosis_code_3
+diagnosis_code_4
+diagnosis_code_5
+diagnosis_code_6
+diagnosis_code_7
+diagnosis_code_8
 ```
 
----
+These columns are converted from columns into rows.
 
-## Vendor B Processing
-
-Vendor B contains a different structure from Vendor A.
-
-Processing includes:
-
-- Reading Vendor B data
-- Standardizing field names
-- Converting service dates
-- Normalizing identifiers
-- Standardizing financial fields
-- Mapping vendor fields to the common schema
-
-Vendor B:
+For example:
 
 ```text
-Input rows  : 53,891
-Output rows : 53,891
+CLAIM_ID    diagnosis_code_1    diagnosis_code_2    diagnosis_code_3
+C001        E11.9                I10                  J18.9
 ```
+
+becomes:
+
+```text
+CLAIM_ID    DIAGNOSIS_CODE
+C001        E119
+C001        I10
+C001        J189
+```
+
+Vendor A processing also includes:
+
+- Mapping vendor-specific fields.
+- Normalizing diagnosis codes.
+- Normalizing gender.
+- Converting service dates.
+- Creating the common schema.
 
 ---
 
-## Vendor C Processing
+## Vendor B
 
-Vendor C requires additional processing because it contains multiple record versions and multiple diagnosis codes.
+Vendor B already stores one diagnosis code per row.
+
+Therefore, no diagnosis unpivoting is required.
+
+The pipeline:
+
+- Reads Vendor B.
+- Maps Vendor B fields to the common schema.
+- Normalizes diagnosis codes.
+- Normalizes gender.
+- Converts service dates.
+- Creates the standardized Vendor B dataset.
+
+---
+
+## Vendor C
+
+Vendor C requires additional processing.
 
 ### Latest Version Selection
 
-The latest applicable version of Vendor C records is selected.
+Vendor C can contain multiple versions of the same claim.
 
-```text
-Input rows                     : 24,186
-After latest-version selection : 20,001
-```
+The pipeline sorts the records by claim reference and version and keeps the latest version.
+
+This prevents older versions of the same claim from being included in the final dataset.
 
 ### Diagnosis Splitting
 
-Multiple diagnosis codes are separated into individual diagnosis records.
+Vendor C stores multiple diagnosis codes in one field separated by `|`.
+
+For example:
 
 ```text
-Rows after diagnosis splitting : 40,171
+E119|I10|J189
 ```
+
+is converted into:
+
+```text
+E119
+I10
+J189
+```
+
+Each diagnosis code becomes a separate row.
 
 ### Date Conversion
 
-Vendor C dates are converted into a standardized date format.
+Vendor C uses a different date format.
 
-Example:
+The pipeline converts the dates into a standard date representation.
+
+---
+
+# Combining the Sources
+
+After each vendor is processed separately, the three standardized datasets are combined.
+
+All three datasets use the same column structure before they are combined.
+
+This makes the final dataset consistent across all vendors.
+
+---
+
+# Global Data Cleaning
+
+The following common cleaning rules are applied after combining the sources.
+
+## 1. Missing Patient IDs
+
+Rows with missing patient identifiers are removed.
+
+The pipeline checks for:
+
+- Null patient IDs.
+- Empty patient IDs.
+- Missing values represented as strings.
+
+---
+
+## 2. Service Date Range
+
+Only records with service dates between:
 
 ```text
-11-03-2023
-24-02-2022
-06-11-2023
+2018-01-01
 ```
 
-are converted to standardized dates.
-
-### Final Vendor C Output
+and:
 
 ```text
-Vendor C output rows : 40,171
+2025-02-28
+```
+
+are allowed.
+
+Invalid, missing, or out-of-range dates are removed.
+
+---
+
+## 3. Diagnosis Code Normalization
+
+Diagnosis codes are:
+
+- Converted to strings.
+- Trimmed.
+- Converted to uppercase.
+- Converted to the required format by removing dots.
+
+For example:
+
+```text
+E11.9
+```
+
+becomes:
+
+```text
+E119
 ```
 
 ---
 
-## Data Harmonization
+## 4. Gender Normalization
 
-After individual vendor processing, all three datasets are combined.
+Gender values are standardized.
 
-```text
-Vendor A : 71,457
-Vendor B : 53,891
-Vendor C : 40,171
-------------------
-Combined : 165,519
-```
-
-All three vendor datasets are converted into a common standardized schema before combination.
-
----
-
-## Global Data Cleaning
-
-Global cleaning is performed after combining the three vendor datasets.
-
-### Missing Patient IDs
-
-Records with missing patient identifiers are removed.
+For example:
 
 ```text
-Rows removed : 1,127
-```
-
-### Invalid or Out-of-Range Dates
-
-The accepted service date range is:
-
-```text
-2018-01-01 to 2025-02-28
-```
-
-Records outside this range are removed.
-
-```text
-Rows removed : 3,226
-```
-
-### Duplicate Records
-
-Duplicate records are identified and removed.
-
-```text
-Rows removed : 1,462
-```
-
-### Final Cleaning Result
-
-```text
-Before cleaning : 165,519
-Rows removed    : 5,815
-After cleaning  : 159,704
+MALE   -> M
+FEMALE -> F
 ```
 
 ---
 
-## Diagnosis Dictionary Mapping
+## 5. Duplicate Removal
 
-The project uses a diagnosis dictionary to add descriptions to standardized diagnosis codes.
-
-The dictionary contains:
+The required record grain is:
 
 ```text
-dx_code
-dx_description
-icd_version
+SRC + CLAIM_ID + DIAGNOSIS_CODE
 ```
 
-The standardized diagnosis code is matched against the dictionary and the corresponding description is added to:
+Duplicate records at this grain are removed.
+
+The first occurrence is kept.
+
+---
+
+# Diagnosis Dictionary
+
+The project uses:
+
+```text
+dx_dictionary.csv
+```
+
+to add diagnosis descriptions.
+
+The diagnosis code in the dictionary is normalized using the same diagnosis normalization logic used for the claims data.
+
+The code is then matched with the harmonized dataset.
+
+The resulting description is stored in:
 
 ```text
 DIAGNOSIS_DESC
 ```
 
-If a diagnosis code is not available in the dictionary, its description is left empty rather than assigning an incorrect value.
+If a diagnosis code is not found in the dictionary, its description is left empty rather than assigning an incorrect value.
 
 ---
 
-## Final Dataset Schema
+# Final Dataset
 
-The final harmonized dataset contains 15 columns.
+The final dataset contains exactly 15 columns:
 
 ```text
 SRC
@@ -287,84 +363,108 @@ ZIP3
 CLAIM_ID
 SERVICE_DATE
 DIAGNOSIS_CODE
+DIAGNOSIS_DESC
 PLACE_OF_SERVICE
 RENDERING_NPI
 REFERRING_NPI
 BILLING_NPI
 PRIMARY_PLAN_ID
 BILLED_AMOUNT
-DIAGNOSIS_DESC
 ```
 
-### Column Description
+## Column Description
 
 | Column | Description |
 |---|---|
 | SRC | Source vendor |
-| PATIENT_ID | Standardized patient identifier |
+| PATIENT_ID | Patient identifier |
 | BIRTH_YEAR | Patient birth year |
-| GENDER | Patient gender |
+| GENDER | Standardized gender |
 | ZIP3 | Three-digit ZIP code |
-| CLAIM_ID | Healthcare claim identifier |
+| CLAIM_ID | Claim identifier |
 | SERVICE_DATE | Standardized service date |
 | DIAGNOSIS_CODE | Standardized diagnosis code |
-| PLACE_OF_SERVICE | Healthcare service location |
+| DIAGNOSIS_DESC | Diagnosis description |
+| PLACE_OF_SERVICE | Place of service |
 | RENDERING_NPI | Rendering provider identifier |
 | REFERRING_NPI | Referring provider identifier |
 | BILLING_NPI | Billing provider identifier |
-| PRIMARY_PLAN_ID | Primary insurance plan identifier |
+| PRIMARY_PLAN_ID | Primary insurance plan |
 | BILLED_AMOUNT | Amount billed |
-| DIAGNOSIS_DESC | Diagnosis description |
 
 ---
 
-## Data Validation
+# Data Validation
 
 The final dataset is validated before export.
 
-Validation checks include:
+The validation checks include:
 
-- Total row count
-- Distinct claim count
-- Distinct patient count
-- Distinct diagnosis code count
-- Source-level record counts
-- Invalid service dates
-- Missing patient IDs
-- Duplicate records
-
----
-
-## Final Dataset Statistics
-
-```text
-Total rows              : 159,704
-Distinct claims         : 68,205
-Distinct patients       : 11,963
-Distinct diagnosis codes: 44
-```
-
-### Source Counts
-
-```text
-Vendor A : 67,531
-Vendor B : 52,819
-Vendor C : 39,354
-```
-
-### Validation Results
-
-```text
-Missing patient IDs : 0
-Invalid dates       : 0
-Duplicate rows      : 0
-```
-
-All final validation checks passed successfully.
+- Total rows.
+- Distinct claims.
+- Distinct patients.
+- Distinct diagnosis codes.
+- Vendor-wise record counts.
+- P00042 total rows.
+- P00042 distinct diagnosis codes.
+- Diagnosis code format.
+- Missing patient IDs.
+- Invalid service dates.
+- Duplicate records.
 
 ---
 
-## Output
+# Final Validation Results
+
+The successful pipeline run produced the following results:
+
+| Check | Actual | Expected | Result |
+|---|---:|---:|---|
+| Total rows | 159704 | 159704 | PASS |
+| Distinct claims | 68205 | 68205 | PASS |
+| Distinct patients | 11963 | 11963 | PASS |
+| Distinct diagnosis codes | 44 | 44 | PASS |
+| P00042 total rows | 7 | 7 | PASS |
+| P00042 diagnosis codes | 7 | 7 | PASS |
+| Invalid diagnosis codes | 0 | 0 | PASS |
+| Missing patient IDs | 0 | 0 | PASS |
+| Invalid service dates | 0 | 0 | PASS |
+| Duplicate rows | 0 | 0 | PASS |
+
+Overall result:
+
+```text
+all_checks_passed = true
+```
+
+---
+
+# Final Dataset Statistics
+
+```text
+Total rows                : 159704
+Distinct claims           : 68205
+Distinct patients         : 11963
+Distinct diagnosis codes  : 44
+```
+
+## Final Records by Vendor
+
+```text
+Vendor A : 67531
+Vendor B : 52819
+Vendor C : 39354
+```
+
+The source counts add up to the final row count:
+
+```text
+67531 + 52819 + 39354 = 159704
+```
+
+---
+
+# Output
 
 The final dataset is generated as:
 
@@ -372,35 +472,227 @@ The final dataset is generated as:
 output/final_harmonized.csv
 ```
 
-Final dataset shape:
+Final dataset:
 
 ```text
-159,704 rows
+159704 rows
 15 columns
+```
+
+The CSV is exported only after the validation step succeeds.
+
+---
+
+# FastAPI Backend
+
+The project includes a FastAPI backend to interact with the pipeline.
+
+The backend provides endpoints to:
+
+- Check whether the API is running.
+- Run the pipeline.
+- View pipeline stages.
+- View validation results.
+- View dataset summary.
+- Download the final CSV.
+
+---
+
+# API Endpoints
+
+## 1. Health Check
+
+```http
+GET /
+```
+
+Checks whether the API is running.
+
+---
+
+## 2. Run Pipeline
+
+```http
+POST /run
+```
+
+Runs the complete pipeline.
+
+The response contains:
+
+- Run ID.
+- Status.
+- Start time.
+- Completion time.
+- Number of rows.
+- Output file.
+- Pipeline stages.
+
+---
+
+## 3. Pipeline Stages
+
+```http
+GET /run/{run_id}/stages
+```
+
+Returns the processing stages for a pipeline run.
+
+The stages are:
+
+```text
+Ingestion
+Combination
+Cleaning
+Dictionary Lookup
+Validation
+Export
 ```
 
 ---
 
-## Technology Stack
+## 4. Validation
 
-### Backend
+```http
+GET /run/{run_id}/validate
+```
 
-- Python
-- FastAPI
-- Uvicorn
+Returns the validation checks for the selected run.
 
-### Data Processing
+Each check contains its actual value, expected value where applicable, and pass/fail status.
 
-- Pandas
-- CSV
+---
 
-### Frontend
+## 5. Summary
+
+```http
+GET /summary
+```
+
+Returns:
+
+- Total rows.
+- Distinct claims.
+- Distinct patients.
+- Distinct diagnosis codes.
+- Source-wise record counts.
+
+---
+
+## 6. Download
+
+```http
+GET /download
+```
+
+Downloads:
+
+```text
+final_harmonized.csv
+```
+
+---
+
+# Dashboard
+
+The project contains a simple web dashboard built using:
 
 - HTML
 - CSS
 - JavaScript
 
-### Development Tools
+The dashboard connects to the FastAPI backend.
+
+The dashboard does not use hard-coded final dataset statistics. Values are obtained from the API after a pipeline run.
+
+The dashboard displays:
+
+## Data Cleaning Summary
+
+```text
+Initial Records
+Missing Patients
+Invalid Dates
+Invalid Diagnoses
+Duplicate Rows
+Total Removed
+Final Records
+```
+
+## Final Records by Vendor
+
+```text
+Vendor A
+Vendor B
+Vendor C
+```
+
+## Validation Results
+
+The dashboard displays the acceptance checks returned by:
+
+```http
+GET /run/{run_id}/validate
+```
+
+## Pipeline Stages
+
+```text
+Ingestion
+Combination
+Cleaning
+Dictionary Lookup
+Validation
+Export
+```
+
+## Actions
+
+The dashboard provides:
+
+```text
+Run Pipeline
+Download CSV
+```
+
+---
+
+# Screenshots
+
+The repository contains screenshots showing the working application.
+
+## Pipeline Dashboard
+
+![Pipeline Dashboard](screenshots/run-page.png)
+
+## Validation Results
+
+![Validation Results](screenshots/validation.png)
+
+The screenshots show the pipeline run, cleaning information, final records by vendor, pipeline stages, and validation results.
+
+---
+
+# Technology Stack
+
+## Backend
+
+- Python
+- FastAPI
+- Uvicorn
+
+## Data Processing
+
+- Pandas
+- CSV
+
+## Frontend
+
+- HTML
+- CSS
+- JavaScript
+
+## Development Tools
 
 - Visual Studio Code
 - Git
@@ -408,7 +700,7 @@ Final dataset shape:
 
 ---
 
-## Project Structure
+# Project Structure
 
 ```text
 Malar_Assessment/
@@ -433,35 +725,40 @@ Malar_Assessment/
 │   ├── style.css
 │   └── script.js
 │
+├── screenshots/
+│   ├── run-page.png
+│   └── validation.png
+│
+├── DESIGN_NOTES.md
+├── README.md
 ├── requirements.txt
-├── .gitignore
-└── README.md
+└── .gitignore
 ```
 
 ---
 
-## Installation
+# Installation
 
-### 1. Clone the Repository
+## 1. Clone the Repository
 
-```bash
+```powershell
 git clone <YOUR_GITHUB_REPOSITORY_URL>
 cd Malar_Assessment
 ```
 
-### 2. Create Virtual Environment
+## 2. Create Virtual Environment
 
 ```powershell
 python -m venv venv
 ```
 
-### 3. Activate Virtual Environment
+## 3. Activate Virtual Environment
 
 ```powershell
 venv\Scripts\activate
 ```
 
-### 4. Install Dependencies
+## 4. Install Dependencies
 
 ```powershell
 pip install -r requirements.txt
@@ -469,7 +766,7 @@ pip install -r requirements.txt
 
 ---
 
-## Running the Pipeline
+# Running the Pipeline
 
 Make sure the virtual environment is activated.
 
@@ -479,20 +776,22 @@ Run:
 python app/pipeline.py
 ```
 
-The pipeline will:
+The pipeline performs the following steps:
 
-1. Process Vendor A.
-2. Process Vendor B.
-3. Process Vendor C.
-4. Select the latest Vendor C versions.
-5. Split diagnosis codes.
-6. Combine all sources.
-7. Perform global cleaning.
-8. Map diagnosis descriptions.
-9. Validate the final dataset.
-10. Export the final CSV.
+```text
+1. Process Vendor A
+2. Process Vendor B
+3. Process Vendor C
+4. Select latest Vendor C versions
+5. Split diagnosis codes
+6. Combine all sources
+7. Perform global cleaning
+8. Add diagnosis descriptions
+9. Validate the dataset
+10. Export the final CSV
+```
 
-The output will be:
+The output is:
 
 ```text
 output/final_harmonized.csv
@@ -500,7 +799,7 @@ output/final_harmonized.csv
 
 ---
 
-## Running the FastAPI Backend
+# Running the FastAPI Backend
 
 Start the backend using:
 
@@ -516,7 +815,7 @@ http://127.0.0.1:8000
 
 ---
 
-## FastAPI Documentation
+# FastAPI Documentation
 
 Interactive API documentation is available at:
 
@@ -526,15 +825,17 @@ http://127.0.0.1:8000/docs
 
 ---
 
-## Running the Dashboard
+# Running the Dashboard
 
-Open the following file using VS Code Live Server:
+Open:
 
 ```text
 frontend/index.html
 ```
 
-Make sure FastAPI is running before opening the dashboard.
+using VS Code Live Server.
+
+Make sure the FastAPI backend is running first.
 
 The dashboard connects to:
 
@@ -544,136 +845,21 @@ http://127.0.0.1:8000
 
 ---
 
-## API Endpoints
+# Data Privacy
 
-### Health Check
+The assessment data is fabricated.
 
-```http
-GET /
-```
+For repository management:
 
-Checks whether the API is running.
-
-### Dataset Summary
-
-```http
-GET /summary
-```
-
-Returns:
-
-- Total records
-- Distinct claims
-- Distinct patients
-- Distinct diagnosis codes
-- Vendor-wise record counts
-
-### Run Pipeline
-
-```http
-POST /run
-```
-
-Runs the complete data harmonization pipeline.
-
-### Pipeline Stages
-
-```http
-GET /run/{run_id}/stages
-```
-
-Returns the processing stages for a pipeline run.
-
-### Validation
-
-```http
-GET /run/{run_id}/validate
-```
-
-Returns validation results for a completed pipeline run.
-
-### Download Final CSV
-
-```http
-GET /download
-```
-
-Downloads the final harmonized dataset:
-
-```text
-final_harmonized.csv
-```
+- Raw datasets should not be committed to a public GitHub repository unless required.
+- Generated output files should not be committed unless required.
+- API keys must not be committed.
+- `.env` files must not be committed.
+- Virtual environment files should not be committed.
 
 ---
 
-## Dashboard Features
-
-The dashboard provides:
-
-### Dataset Summary
-
-Displays:
-
-- Total records
-- Claims
-- Patients
-- Diagnosis codes
-
-### Source Distribution
-
-Displays the number of records from:
-
-- Vendor A
-- Vendor B
-- Vendor C
-
-### Pipeline Stages
-
-Displays:
-
-```text
-✓ Ingestion
-✓ Combination
-✓ Cleaning
-✓ Dictionary Lookup
-✓ Validation
-✓ Export
-```
-
-### Run Pipeline
-
-The user can execute the complete pipeline using:
-
-```text
-Run Pipeline
-```
-
-### Download CSV
-
-The user can download the final harmonized dataset using:
-
-```text
-Download CSV
-```
-
----
-
-## Data Privacy
-
-The input datasets contain healthcare-related claims information.
-
-For privacy and repository management:
-
-- Raw input datasets should not be uploaded to a public GitHub repository.
-- Generated output datasets should not be committed unless required.
-- Sensitive information should be excluded from public repositories.
-- API keys and environment variables must not be committed.
-
-The `.gitignore` file excludes raw datasets, generated outputs, virtual environments, and environment files.
-
----
-
-## .gitignore
+# .gitignore
 
 Recommended `.gitignore`:
 
@@ -700,47 +886,47 @@ Thumbs.db
 
 ---
 
-## Future Enhancements
+# Future Improvements
 
-Possible future improvements include:
+If this pipeline had to process much larger datasets or run in production, I would consider:
 
-- Database integration
-- Cloud deployment
-- Automated data ingestion
-- Scheduled pipeline execution
-- Authentication and authorization
-- Advanced data quality reporting
-- Interactive analytics
-- Error monitoring
-- Pipeline logging
-- Data lineage tracking
-- Docker deployment
-- CI/CD integration
+- Database storage instead of local CSV files.
+- Batch processing.
+- Cloud storage.
+- Automated data ingestion.
+- Scheduled pipeline execution.
+- Better logging and monitoring.
+- Authentication and authorization.
+- Data lineage tracking.
+- Automated testing.
+- Docker deployment.
+- CI/CD.
+- More detailed data-quality reports.
 
 ---
 
-## Conclusion
+# Conclusion
 
-This project provides a complete data harmonization workflow for integrating healthcare claims data from multiple vendor sources.
+This project provides a complete data harmonization workflow for healthcare claims data from three different vendors.
 
-The pipeline handles vendor-specific transformations, schema standardization, data cleaning, diagnosis enrichment, validation, and final dataset generation.
+The pipeline handles vendor-specific transformations, diagnosis-code normalization, date conversion, missing data, duplicate records, diagnosis dictionary mapping, validation, and final CSV generation.
 
-The system also provides a FastAPI backend and web dashboard for interacting with the pipeline.
+A FastAPI backend provides access to the pipeline, while the web dashboard provides a simple way to run and monitor the process.
 
-Final validated dataset:
+The final validated dataset contains:
 
 ```text
-159,704 records
+159704 records
 15 columns
-68,205 distinct claims
-11,963 distinct patients
+68205 distinct claims
+11963 distinct patients
 44 diagnosis codes
 ```
 
-All final validation checks passed successfully.
+All required validation checks passed successfully.
 
 ---
 
-## Author
+# Author
 
-Developed as a Data Engineering Assessment Project.
+Developed as a Data Engineering Internship Assessment Project.

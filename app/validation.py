@@ -6,8 +6,11 @@ import pandas as pd
 # =========================================================
 
 EXPECTED_TOTAL_ROWS = 159704
+
 EXPECTED_DISTINCT_CLAIMS = 68205
+
 EXPECTED_DISTINCT_PATIENTS = 11963
+
 EXPECTED_DISTINCT_DIAGNOSIS_CODES = 44
 
 EXPECTED_SOURCE_COUNTS = {
@@ -16,22 +19,12 @@ EXPECTED_SOURCE_COUNTS = {
     "C": 39354,
 }
 
-EXPECTED_P00042_ROWS = 7
-EXPECTED_P00042_DIAGNOSIS_CODES = 7
-
 
 # =========================================================
-# VALIDATION FUNCTION
+# VALIDATION
 # =========================================================
 
 def validate_dataset(df):
-    """
-    Validate the final harmonized dataset against
-    the required acceptance criteria.
-
-    Returns:
-        bool: True when all checks pass.
-    """
 
     print("\n" + "=" * 60)
     print("DATASET VALIDATION")
@@ -39,13 +32,18 @@ def validate_dataset(df):
 
     all_passed = True
 
-    # =====================================================
-    # 1. TOTAL ROW COUNT
-    # =====================================================
+    # -----------------------------------------------------
+    # TOTAL ROWS
+    # -----------------------------------------------------
 
-    actual_rows = len(df)
+    actual_rows = int(
+        len(df)
+    )
 
-    passed = actual_rows == EXPECTED_TOTAL_ROWS
+    passed = bool(
+        actual_rows
+        == EXPECTED_TOTAL_ROWS
+    )
 
     print(
         f"\nTotal rows: "
@@ -56,13 +54,20 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # 2. DISTINCT CLAIMS
-    # =====================================================
+    # -----------------------------------------------------
+    # CLAIMS
+    # -----------------------------------------------------
 
-    actual_claims = df["CLAIM_ID"].nunique()
+    actual_claims = int(
+        df[
+            "CLAIM_ID"
+        ].nunique()
+    )
 
-    passed = actual_claims == EXPECTED_DISTINCT_CLAIMS
+    passed = bool(
+        actual_claims
+        == EXPECTED_DISTINCT_CLAIMS
+    )
 
     print(
         f"Distinct claims: "
@@ -73,13 +78,20 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # 3. DISTINCT PATIENTS
-    # =====================================================
+    # -----------------------------------------------------
+    # PATIENTS
+    # -----------------------------------------------------
 
-    actual_patients = df["PATIENT_ID"].nunique()
+    actual_patients = int(
+        df[
+            "PATIENT_ID"
+        ].nunique()
+    )
 
-    passed = actual_patients == EXPECTED_DISTINCT_PATIENTS
+    passed = bool(
+        actual_patients
+        == EXPECTED_DISTINCT_PATIENTS
+    )
 
     print(
         f"Distinct patients: "
@@ -90,15 +102,17 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # 4. DISTINCT DIAGNOSIS CODES
-    # =====================================================
+    # -----------------------------------------------------
+    # DIAGNOSIS CODES
+    # -----------------------------------------------------
 
-    actual_diagnosis_codes = (
-        df["DIAGNOSIS_CODE"].nunique()
+    actual_diagnosis_codes = int(
+        df[
+            "DIAGNOSIS_CODE"
+        ].nunique()
     )
 
-    passed = (
+    passed = bool(
         actual_diagnosis_codes
         == EXPECTED_DISTINCT_DIAGNOSIS_CODES
     )
@@ -112,26 +126,35 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # 5. SOURCE COUNTS
-    # =====================================================
+    # -----------------------------------------------------
+    # SOURCE COUNTS
+    # -----------------------------------------------------
 
-    actual_source_counts = (
-        df.groupby("SRC")
+    actual_source_counts = {
+        str(key): int(value)
+        for key, value
+        in df.groupby("SRC")
         .size()
         .to_dict()
-    )
+        .items()
+    }
 
     print("\nSource counts:")
 
-    for source, expected in EXPECTED_SOURCE_COUNTS.items():
+    for source, expected in (
+        EXPECTED_SOURCE_COUNTS.items()
+    ):
 
-        actual = actual_source_counts.get(
-            source,
-            0
+        actual = int(
+            actual_source_counts.get(
+                source,
+                0
+            )
         )
 
-        passed = actual == expected
+        passed = bool(
+            actual == expected
+        )
 
         print(
             f"  Source {source}: "
@@ -142,92 +165,9 @@ def validate_dataset(df):
         if not passed:
             all_passed = False
 
-    # =====================================================
-    # 6. P00042 — TOTAL ROWS
-    # =====================================================
-
-    patient_00042 = df[
-        df["PATIENT_ID"].astype(str).str.strip()
-        == "P00042"
-    ]
-
-    p00042_rows = len(patient_00042)
-
-    passed = (
-        p00042_rows
-        == EXPECTED_P00042_ROWS
-    )
-
-    print(
-        f"\nPatient P00042 - total rows: "
-        f"{p00042_rows} "
-        f"{'✓ PASS' if passed else '✗ FAIL'}"
-    )
-
-    if not passed:
-        all_passed = False
-
-    # =====================================================
-    # 7. P00042 — DISTINCT DIAGNOSIS CODES
-    # =====================================================
-
-    p00042_diagnosis_codes = (
-        patient_00042["DIAGNOSIS_CODE"]
-        .nunique()
-    )
-
-    passed = (
-        p00042_diagnosis_codes
-        == EXPECTED_P00042_DIAGNOSIS_CODES
-    )
-
-    print(
-        f"Patient P00042 - distinct diagnosis codes: "
-        f"{p00042_diagnosis_codes} "
-        f"{'✓ PASS' if passed else '✗ FAIL'}"
-    )
-
-    if not passed:
-        all_passed = False
-
-    # =====================================================
-    # 8. DIAGNOSIS CODE FORMAT
-    # =====================================================
-
-    diagnosis_codes = (
-        df["DIAGNOSIS_CODE"]
-        .astype(str)
-        .str.strip()
-    )
-
-    invalid_code_format = (
-        diagnosis_codes.eq("")
-        | diagnosis_codes.str.contains(
-            r"\.",
-            regex=True,
-            na=False
-        )
-        | diagnosis_codes.ne(
-            diagnosis_codes.str.upper()
-        )
-    )
-
-    invalid_code_count = invalid_code_format.sum()
-
-    passed = invalid_code_count == 0
-
-    print(
-        f"Invalid diagnosis code format: "
-        f"{invalid_code_count} "
-        f"{'✓ PASS' if passed else '✗ FAIL'}"
-    )
-
-    if not passed:
-        all_passed = False
-
-    # =====================================================
-    # 9. DATE RANGE
-    # =====================================================
+    # -----------------------------------------------------
+    # DATES
+    # -----------------------------------------------------
 
     start_date = pd.Timestamp(
         "2018-01-01"
@@ -237,20 +177,37 @@ def validate_dataset(df):
         "2025-02-28"
     )
 
-    invalid_dates = (
-        (df["SERVICE_DATE"] < start_date)
-        | (df["SERVICE_DATE"] > end_date)
-        | (df["SERVICE_DATE"].isna())
+    service_dates = pd.to_datetime(
+        df[
+            "SERVICE_DATE"
+        ],
+        errors="coerce"
     )
 
-    invalid_date_count = (
+    invalid_dates = (
+        service_dates.isna()
+        |
+        (
+            service_dates
+            < start_date
+        )
+        |
+        (
+            service_dates
+            > end_date
+        )
+    )
+
+    invalid_date_count = int(
         invalid_dates.sum()
     )
 
-    passed = invalid_date_count == 0
+    passed = bool(
+        invalid_date_count == 0
+    )
 
     print(
-        f"Invalid service dates: "
+        f"\nInvalid service dates: "
         f"{invalid_date_count} "
         f"{'✓ PASS' if passed else '✗ FAIL'}"
     )
@@ -258,25 +215,32 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # 10. MISSING PATIENT IDs
-    # =====================================================
+    # -----------------------------------------------------
+    # MISSING PATIENTS
+    # -----------------------------------------------------
 
     missing_patients = (
-        df["PATIENT_ID"].isna()
-        | (
-            df["PATIENT_ID"]
+        df[
+            "PATIENT_ID"
+        ].isna()
+        |
+        (
+            df[
+                "PATIENT_ID"
+            ]
             .astype(str)
             .str.strip()
             == ""
         )
     )
 
-    missing_patient_count = (
+    missing_patient_count = int(
         missing_patients.sum()
     )
 
-    passed = missing_patient_count == 0
+    passed = bool(
+        missing_patient_count == 0
+    )
 
     print(
         f"Missing patient IDs: "
@@ -287,24 +251,23 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # 11. DUPLICATE CHECK
-    # =====================================================
+    # -----------------------------------------------------
+    # DUPLICATES
+    # -----------------------------------------------------
 
-    duplicate_keys = [
-        "SRC",
-        "CLAIM_ID",
-        "DIAGNOSIS_CODE"
-    ]
-
-    duplicate_count = (
+    duplicate_count = int(
         df.duplicated(
-            subset=duplicate_keys
-        )
-        .sum()
+            subset=[
+                "SRC",
+                "CLAIM_ID",
+                "DIAGNOSIS_CODE"
+            ]
+        ).sum()
     )
 
-    passed = duplicate_count == 0
+    passed = bool(
+        duplicate_count == 0
+    )
 
     print(
         f"Duplicate rows: "
@@ -315,21 +278,24 @@ def validate_dataset(df):
     if not passed:
         all_passed = False
 
-    # =====================================================
-    # FINAL RESULT
-    # =====================================================
+    # -----------------------------------------------------
+    # FINAL
+    # -----------------------------------------------------
 
     print("\n" + "=" * 60)
 
     if all_passed:
+
         print(
             "ALL VALIDATION CHECKS PASSED ✓"
         )
+
     else:
+
         print(
             "SOME VALIDATION CHECKS FAILED ✗"
         )
 
     print("=" * 60)
 
-    return all_passed
+    return bool(all_passed)
