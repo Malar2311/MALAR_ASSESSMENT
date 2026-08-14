@@ -1,5 +1,25 @@
+# Virtual environment
 venv/
+.venv/
+
+# Python cache
 __pycache__/
-*.pyc
+*.py[cod]
+
+# Environment variables
 .env
-output/
+
+# Raw/input data
+data/*.csv
+data/*.xlsx
+
+# Generated output
+output/*.csv
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
