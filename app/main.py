@@ -5,18 +5,10 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 from datetime import datetime
 import uuid
+
 import pandas as pd
 
-from app.pipeline import (
-    process_source_a,
-    process_source_b,
-    process_source_c,
-    combine_sources,
-    clean_combined_data,
-    add_diagnosis_descriptions,
-    export_final_dataset,
-)
-
+import app.pipeline as pipeline
 from app.validation import validate_dataset
 
 
@@ -55,9 +47,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 OUTPUT_DIR = BASE_DIR / "output"
 
-FINAL_OUTPUT = OUTPUT_DIR / "final_harmonized.csv"
+FINAL_OUTPUT = (
+    OUTPUT_DIR / "final_harmonized.csv"
+)
 
-OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(
+    exist_ok=True
+)
 
 
 # =========================================================
@@ -75,9 +71,14 @@ runs = {}
 def home():
 
     return {
-        "application": "Multi-Source Data Harmonization Pipeline",
-        "status": "running",
-        "version": "1.0.0"
+        "application":
+            "Multi-Source Data Harmonization Pipeline",
+
+        "status":
+            "running",
+
+        "version":
+            "1.0.0"
     }
 
 
@@ -132,7 +133,8 @@ def get_summary():
 
             "source_counts": {
 
-                str(key): int(value)
+                str(key):
+                    int(value)
 
                 for key, value
                 in source_counts.items()
@@ -197,13 +199,21 @@ def run_pipeline():
             "status": "running"
         })
 
-        source_a = process_source_a()
+        source_a = (
+            pipeline.process_source_a()
+        )
 
-        source_b = process_source_b()
+        source_b = (
+            pipeline.process_source_b()
+        )
 
-        source_c = process_source_c()
+        source_c = (
+            pipeline.process_source_c()
+        )
 
-        stages[-1]["status"] = "completed"
+        stages[-1]["status"] = (
+            "completed"
+        )
 
 
         # =================================================
@@ -215,13 +225,17 @@ def run_pipeline():
             "status": "running"
         })
 
-        combined = combine_sources(
-            source_a,
-            source_b,
-            source_c
+        combined = (
+            pipeline.combine_sources(
+                source_a,
+                source_b,
+                source_c
+            )
         )
 
-        stages[-1]["status"] = "completed"
+        stages[-1]["status"] = (
+            "completed"
+        )
 
 
         # =================================================
@@ -233,11 +247,15 @@ def run_pipeline():
             "status": "running"
         })
 
-        final_data = clean_combined_data(
-            combined
+        final_data = (
+            pipeline.clean_combined_data(
+                combined
+            )
         )
 
-        stages[-1]["status"] = "completed"
+        stages[-1]["status"] = (
+            "completed"
+        )
 
 
         # =================================================
@@ -249,11 +267,15 @@ def run_pipeline():
             "status": "running"
         })
 
-        final_data = add_diagnosis_descriptions(
-            final_data
+        final_data = (
+            pipeline.add_diagnosis_descriptions(
+                final_data
+            )
         )
 
-        stages[-1]["status"] = "completed"
+        stages[-1]["status"] = (
+            "completed"
+        )
 
 
         # =================================================
@@ -265,17 +287,23 @@ def run_pipeline():
             "status": "running"
         })
 
-        validation_passed = validate_dataset(
-            final_data
+        validation_passed = bool(
+            validate_dataset(
+                final_data
+            )
         )
 
         if validation_passed:
 
-            stages[-1]["status"] = "completed"
+            stages[-1]["status"] = (
+                "completed"
+            )
 
         else:
 
-            stages[-1]["status"] = "failed"
+            stages[-1]["status"] = (
+                "failed"
+            )
 
             raise HTTPException(
                 status_code=422,
@@ -295,11 +323,15 @@ def run_pipeline():
             "status": "running"
         })
 
-        output_file = export_final_dataset(
-            final_data
+        output_file = (
+            pipeline.export_final_dataset(
+                final_data
+            )
         )
 
-        stages[-1]["status"] = "completed"
+        stages[-1]["status"] = (
+            "completed"
+        )
 
 
         # =================================================
@@ -411,11 +443,11 @@ def get_run_stages(
 
 
 # =========================================================
-# GET VALIDATION RESULT
+# GET PIPELINE QUALITY REPORT
 # =========================================================
 
-@app.get("/run/{run_id}/validate")
-def get_validation(
+@app.get("/run/{run_id}/report")
+def get_pipeline_report(
     run_id: str
 ):
 
@@ -425,6 +457,81 @@ def get_validation(
             status_code=404,
             detail="Run ID not found."
         )
+
+
+    if runs[run_id]["status"] != "completed":
+
+        return {
+
+            "run_id":
+                run_id,
+
+            "status":
+                runs[run_id]["status"],
+
+            "pipeline_report":
+                None
+        }
+
+
+    # -----------------------------------------------------
+    # IMPORTANT:
+    # Access the variable through the pipeline module.
+    # This avoids stale imported values.
+    # -----------------------------------------------------
+
+    cleaning_report = (
+        pipeline.CLEANING_REPORT
+    )
+
+
+    if not cleaning_report:
+
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "Cleaning report is not available."
+            )
+        )
+
+
+    return {
+
+        "run_id":
+            run_id,
+
+        "status":
+            "completed",
+
+        "pipeline_report":
+            cleaning_report
+    }
+
+
+# =========================================================
+# GET VALIDATION RESULT
+# =========================================================
+
+@app.get("/run/{run_id}/validate")
+def get_validation(
+    run_id: str
+):
+
+    # =====================================================
+    # CHECK RUN ID
+    # =====================================================
+
+    if run_id not in runs:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Run ID not found."
+        )
+
+
+    # =====================================================
+    # CHECK RUN STATUS
+    # =====================================================
 
     if runs[run_id]["status"] != "completed":
 
@@ -441,6 +548,10 @@ def get_validation(
         }
 
 
+    # =====================================================
+    # CHECK OUTPUT FILE
+    # =====================================================
+
     if not FINAL_OUTPUT.exists():
 
         raise HTTPException(
@@ -451,6 +562,10 @@ def get_validation(
 
     try:
 
+        # =================================================
+        # LOAD FINAL DATASET
+        # =================================================
+
         df = pd.read_csv(
             FINAL_OUTPUT
         )
@@ -460,21 +575,131 @@ def get_validation(
         # BASIC COUNTS
         # =================================================
 
-        total_rows = len(df)
-
-        distinct_claims = (
-            df["CLAIM_ID"]
-            .nunique()
+        total_rows = int(
+            len(df)
         )
 
-        distinct_patients = (
+        distinct_claims = int(
+            df["CLAIM_ID"].nunique()
+        )
+
+        distinct_patients = int(
+            df["PATIENT_ID"].nunique()
+        )
+
+        distinct_diagnosis_codes = int(
+            df["DIAGNOSIS_CODE"].nunique()
+        )
+
+
+        # =================================================
+        # SOURCE COUNTS
+        # =================================================
+
+        source_counts = (
+            df.groupby("SRC")
+            .size()
+            .to_dict()
+        )
+
+        source_counts = {
+
+            str(key):
+                int(value)
+
+            for key, value
+            in source_counts.items()
+        }
+
+
+        # =================================================
+        # EXPECTED SOURCE COUNTS
+        # =================================================
+
+        expected_source_counts = {
+
+            "A":
+                67531,
+
+            "B":
+                52819,
+
+            "C":
+                39354
+        }
+
+
+        source_counts_passed = bool(
+            source_counts
+            == expected_source_counts
+        )
+
+
+        # =================================================
+        # P00042 CHECKS
+        # =================================================
+
+        patient_00042 = df[
             df["PATIENT_ID"]
-            .nunique()
+            .astype(str)
+            .str.strip()
+            == "P00042"
+        ]
+
+        p00042_rows = int(
+            len(patient_00042)
         )
 
-        distinct_diagnosis_codes = (
+        p00042_diagnosis_codes = int(
+            patient_00042[
+                "DIAGNOSIS_CODE"
+            ].nunique()
+        )
+
+        p00042_rows_passed = bool(
+            p00042_rows == 7
+        )
+
+        p00042_diagnosis_passed = bool(
+            p00042_diagnosis_codes == 7
+        )
+
+
+        # =================================================
+        # DIAGNOSIS CODE FORMAT
+        # =================================================
+
+        diagnosis_codes = (
             df["DIAGNOSIS_CODE"]
-            .nunique()
+            .astype(str)
+            .str.strip()
+        )
+
+        invalid_code_format = (
+
+            diagnosis_codes.eq("")
+
+            |
+
+            diagnosis_codes.str.contains(
+                r"\.",
+                regex=True,
+                na=False
+            )
+
+            |
+
+            diagnosis_codes.ne(
+                diagnosis_codes.str.upper()
+            )
+        )
+
+        invalid_code_count = int(
+            invalid_code_format.sum()
+        )
+
+        diagnosis_format_passed = bool(
+            invalid_code_count == 0
         )
 
 
@@ -482,15 +707,18 @@ def get_validation(
         # DUPLICATES
         # =================================================
 
-        duplicate_count = (
+        duplicate_count = int(
             df.duplicated(
                 subset=[
                     "SRC",
                     "CLAIM_ID",
                     "DIAGNOSIS_CODE"
                 ]
-            )
-            .sum()
+            ).sum()
+        )
+
+        duplicate_check_passed = bool(
+            duplicate_count == 0
         )
 
 
@@ -512,8 +740,12 @@ def get_validation(
             )
         )
 
-        missing_patient_count = (
+        missing_patient_count = int(
             missing_patients.sum()
+        )
+
+        missing_patient_check_passed = bool(
+            missing_patient_count == 0
         )
 
 
@@ -547,19 +779,54 @@ def get_validation(
             (service_dates > end_date)
         )
 
-        invalid_date_count = (
+        invalid_date_count = int(
             invalid_dates.sum()
+        )
+
+        date_check_passed = bool(
+            invalid_date_count == 0
         )
 
 
         # =================================================
-        # SOURCE COUNTS
+        # EXPECTED VALUE CHECKS
         # =================================================
 
-        source_counts = (
-            df.groupby("SRC")
-            .size()
-            .to_dict()
+        total_rows_passed = bool(
+            total_rows == 159704
+        )
+
+        claims_passed = bool(
+            distinct_claims == 68205
+        )
+
+        patients_passed = bool(
+            distinct_patients == 11963
+        )
+
+        diagnosis_count_passed = bool(
+            distinct_diagnosis_codes == 44
+        )
+
+
+        # =================================================
+        # OVERALL VALIDATION
+        # =================================================
+
+        all_checks_passed = bool(
+            all([
+                total_rows_passed,
+                claims_passed,
+                patients_passed,
+                diagnosis_count_passed,
+                source_counts_passed,
+                p00042_rows_passed,
+                p00042_diagnosis_passed,
+                diagnosis_format_passed,
+                date_check_passed,
+                missing_patient_check_passed,
+                duplicate_check_passed
+            ])
         )
 
 
@@ -577,42 +844,134 @@ def get_validation(
 
             "validation": {
 
-                "total_rows":
-                    int(total_rows),
+                "total_rows": {
 
-                "distinct_claims":
-                    int(distinct_claims),
+                    "actual":
+                        total_rows,
 
-                "distinct_patients":
-                    int(distinct_patients),
+                    "expected":
+                        159704,
 
-                "distinct_diagnosis_codes":
-                    int(
-                        distinct_diagnosis_codes
-                    ),
+                    "passed":
+                        total_rows_passed
+                },
+
+                "distinct_claims": {
+
+                    "actual":
+                        distinct_claims,
+
+                    "expected":
+                        68205,
+
+                    "passed":
+                        claims_passed
+                },
+
+                "distinct_patients": {
+
+                    "actual":
+                        distinct_patients,
+
+                    "expected":
+                        11963,
+
+                    "passed":
+                        patients_passed
+                },
+
+                "distinct_diagnosis_codes": {
+
+                    "actual":
+                        distinct_diagnosis_codes,
+
+                    "expected":
+                        44,
+
+                    "passed":
+                        diagnosis_count_passed
+                },
 
                 "source_counts": {
 
-                    str(key): int(value)
+                    "actual":
+                        source_counts,
 
-                    for key, value
-                    in source_counts.items()
+                    "expected":
+                        expected_source_counts,
+
+                    "passed":
+                        source_counts_passed
                 },
 
-                "missing_patient_ids":
-                    int(
-                        missing_patient_count
-                    ),
+                "p00042": {
 
-                "invalid_service_dates":
-                    int(
-                        invalid_date_count
-                    ),
+                    "total_rows":
+                        p00042_rows,
 
-                "duplicate_rows":
-                    int(
-                        duplicate_count
-                    )
+                    "expected_rows":
+                        7,
+
+                    "rows_passed":
+                        p00042_rows_passed,
+
+                    "distinct_diagnosis_codes":
+                        p00042_diagnosis_codes,
+
+                    "expected_diagnosis_codes":
+                        7,
+
+                    "diagnosis_codes_passed":
+                        p00042_diagnosis_passed
+                },
+
+                "diagnosis_code_format": {
+
+                    "invalid_code_count":
+                        invalid_code_count,
+
+                    "passed":
+                        diagnosis_format_passed
+                },
+
+                "missing_patient_ids": {
+
+                    "count":
+                        missing_patient_count,
+
+                    "passed":
+                        missing_patient_check_passed
+                },
+
+                "invalid_service_dates": {
+
+                    "count":
+                        invalid_date_count,
+
+                    "allowed_range": {
+
+                        "start":
+                            "2018-01-01",
+
+                        "end":
+                            "2025-02-28"
+                    },
+
+                    "passed":
+                        date_check_passed
+                },
+
+                "duplicate_rows": {
+
+                    "count":
+                        duplicate_count,
+
+                    "passed":
+                        duplicate_check_passed
+                },
+
+                "all_checks_passed":
+                    all_checks_passed
             }
         }
 
