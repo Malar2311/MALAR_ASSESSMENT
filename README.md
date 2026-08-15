@@ -663,11 +663,11 @@ The repository contains screenshots showing the working application.
 
 ## Pipeline Dashboard
 
-![Pipeline Dashboard](screenshots/run-page.png)
+![Pipeline Dashboard](screenshots/Dashboard1.png)
 
 ## Validation Results
 
-![Validation Results](screenshots/validation.png)
+![Validation Results](screenshots/Dashboard3.png)
 
 The screenshots show the pipeline run, cleaning information, final records by vendor, pipeline stages, and validation results.
 
